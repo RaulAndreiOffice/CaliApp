@@ -8,7 +8,6 @@ import {
   Sparkles,
   Share2,
   Settings,
-  User,
   ChevronRight,
 } from 'lucide-react';
 import { cn } from '../../../utils/cn';

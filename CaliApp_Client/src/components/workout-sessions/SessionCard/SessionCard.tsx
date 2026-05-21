@@ -13,6 +13,7 @@ export function SessionCard({ session, completionRate }: SessionCardProps) {
     started: 'info',
     completed: 'success',
     cancelled: 'danger',
+    rest: 'default',
   } as const;
 
   return (
