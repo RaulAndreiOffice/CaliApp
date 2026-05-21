@@ -23,16 +23,17 @@ export function Dialog({ open, title, children, footer, onClose }: DialogProps) 
 
   return (
     <div
-      className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100] p-4 fade-in"
+      className="fixed inset-0 bg-black/60 flex items-start sm:items-center justify-center z-[100] p-2 sm:p-4 overflow-y-auto fade-in"
+      style={{ minHeight: '100dvh' }}
       onClick={onClose}
     >
       <div
-        className="w-full max-w-[480px] max-h-[calc(100vh-2rem)] flex flex-col glass rounded-2xl shadow-xl scale-in"
+        className="w-full max-w-[480px] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col glass rounded-2xl shadow-xl scale-in my-auto"
         role="dialog"
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="flex items-center justify-between px-6 py-4 border-b border-border/30">
+        <header className="flex shrink-0 items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-border/30">
           <h3 className="text-lg font-semibold">{title}</h3>
           <button
             type="button"
@@ -43,9 +44,11 @@ export function Dialog({ open, title, children, footer, onClose }: DialogProps) 
             <X size={18} />
           </button>
         </header>
-        <div className="flex-1 p-6 overflow-y-auto">{children}</div>
+        <div className="min-h-0 flex-1 p-4 sm:p-6 overflow-y-auto overscroll-contain">
+          {children}
+        </div>
         {footer && (
-          <footer className="flex justify-end gap-2 px-6 py-4 border-t border-border/30">
+          <footer className="flex shrink-0 justify-end gap-2 px-4 sm:px-6 py-3 sm:py-4 border-t border-border/30">
             {footer}
           </footer>
         )}

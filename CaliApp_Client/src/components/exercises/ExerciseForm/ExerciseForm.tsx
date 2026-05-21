@@ -86,7 +86,7 @@ export function ExerciseForm({
         error={errors.description?.message}
         {...register('description')}
       />
-      <div className="flex justify-end gap-2 mt-2">
+      <div className="sticky bottom-0 z-10 -mx-4 sm:-mx-6 mt-2 flex justify-end gap-2 border-t border-border/30 bg-card/95 px-4 sm:px-6 py-3 backdrop-blur">
         {onCancel && (
           <Button type="button" variant="secondary" onClick={onCancel}>
             Anuleaza
