@@ -1,0 +1,53 @@
+/* ─── Custom scrollbar ────────────────────────────────────────────────────── */
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .touch-manipulation {
+    touch-action: manipulation;
+  }
+}
+
+/* ─── Premium scrollbar (lime tinted) ─────────────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(132, 255, 0, 0.15) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(132, 255, 0, 0.12);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(132, 255, 0, 0.25);
+}
+
+/* ─── Selection ───────────────────────────────────────────────────────────── */
+
+::selection {
+  background: rgba(132, 255, 0, 0.18);
+  color: var(--ink-10, #f4f5f7);
+}
+
+/* ─── Focus visible ───────────────────────────────────────────────────────── */
+
+:focus-visible {
+  outline: 2px solid var(--ring, #84ff00);
+  outline-offset: 2px;
+}

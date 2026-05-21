@@ -1,0 +1,87 @@
+import { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Pencil, Share2, Play } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Button } from '../../../components/ui/Button';
+import { Card, CardContent } from '../../../components/ui/Card';
+import { WorkoutTableView } from '../../../components/workout-tables/WorkoutTableView/WorkoutTableView';
+import { ShareDialog } from '../../../components/sharing/ShareDialog/ShareDialog';
+import { LoadingSpinner } from '../../../components/common/LoadingSpinner/LoadingSpinner';
+import { useWorkoutTable } from '../../../hooks/api/useWorkoutTables';
+import { useStartSession } from '../../../hooks/api/useWorkoutSessions';
+import { useWorkoutStore } from '../../../stores/workout.store';
+
+export function WorkoutTableDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { data: table, isLoading } = useWorkoutTable(id);
+  const startSession = useStartSession();
+  const startSessionInStore = useWorkoutStore((s) => s.startSession);
+  const [shareOpen, setShareOpen] = useState(false);
+
+  if (isLoading || !table) return <LoadingSpinner label="Se incarca..." />;
+
+  function handleStart() {
+    if (!id) return;
+    startSession.mutate(
+      { workoutTableId: id },
+      {
+        onSuccess: (session) => {
+          startSessionInStore(session.id);
+          navigate('/workout');
+        },
+        onError: () => toast.error('Eroare la pornire'),
+      }
+    );
+  }
+
+  return (
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold">{table.name}</h1>
+          {table.description && (
+            <p className="text-sm sm:text-base text-muted-foreground mt-1">{table.description}</p>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+          <Button
+            variant="secondary"
+            icon={<Pencil size={16} />}
+            onClick={() => navigate(`/workout-tables/${table.id}/edit`)}
+          >
+            Edit
+          </Button>
+          <Button
+            variant="secondary"
+            icon={<Share2 size={16} />}
+            onClick={() => setShareOpen(true)}
+          >
+            Share
+          </Button>
+          <Button
+            icon={<Play size={16} />}
+            onClick={handleStart}
+            loading={startSession.isPending}
+          >
+            Incepe
+          </Button>
+        </div>
+      </div>
+
+      <Card>
+        <CardContent>
+          <WorkoutTableView rows={table.rows ?? []} />
+        </CardContent>
+      </Card>
+
+      {id && (
+        <ShareDialog
+          open={shareOpen}
+          tableId={id}
+          onClose={() => setShareOpen(false)}
+        />
+      )}
+    </div>
+  );
+}

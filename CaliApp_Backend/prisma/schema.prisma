@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(uuid())
+  username     String?  @db.VarChar(50)
+  email        String   @unique @db.VarChar(255)
+  passwordHash String   @map("password_hash")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @default(now()) @updatedAt @map("updated_at")
+
+  exercises      Exercise[]
+  workoutTables  WorkoutTable[]
+  workoutSessions WorkoutSession[]
+  refreshTokens  RefreshToken[]
+  sharesSent     WorkoutTableShare[] @relation("SharesSent")
+  sharesReceived WorkoutTableShare[] @relation("SharesReceived")
+
+  @@map("users")
+}
+
+model Exercise {
+  id                 String    @id @default(uuid())
+  ownerUserId        String?   @map("owner_user_id")
+  name               String    @db.VarChar(100)
+  measurementType    String    @map("measurement_type") @db.VarChar(20)
+  category           String?   @db.VarChar(50)
+  description        String?
+  defaultSets        Int?      @map("default_sets")
+  defaultTargetValue Float?    @map("default_target_value")
+  defaultRestSeconds Int?      @map("default_rest_seconds")
+  isGlobal           Boolean   @default(false) @map("is_global")
+  archivedAt         DateTime? @map("archived_at")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  owner             User?               @relation(fields: [ownerUserId], references: [id])
+  workoutTableRows  WorkoutTableRow[]
+  workoutSessionRows WorkoutSessionRow[]
+
+  @@index([ownerUserId])
+  @@map("exercises")
+}
+
+model WorkoutTable {
+  id          String    @id @default(uuid())
+  ownerUserId String    @map("owner_user_id")
+  name        String    @db.VarChar(100)
+  description String?
+  isActive    Boolean   @default(true) @map("is_active")
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
+
+  owner           User                @relation(fields: [ownerUserId], references: [id])
+  rows            WorkoutTableRow[]
+  workoutSessions WorkoutSession[]
+  shares          WorkoutTableShare[]
+
+  @@index([ownerUserId])
+  @@map("workout_tables")
+}
+
+model WorkoutTableRow {
+  id                 String   @id @default(uuid())
+  workoutTableId     String   @map("workout_table_id")
+  exerciseId         String   @map("exercise_id")
+  plannedSets        Int      @map("planned_sets")
+  plannedTargetValue Float    @map("planned_target_value")
+  restSeconds        Int?     @map("rest_seconds")
+  orderIndex         Int      @map("order_index")
+  notes              String?
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
+
+  workoutTable      WorkoutTable       @relation(fields: [workoutTableId], references: [id], onDelete: Cascade)
+  exercise          Exercise           @relation(fields: [exerciseId], references: [id])
+  workoutSessionRows WorkoutSessionRow[]
+
+  @@unique([workoutTableId, orderIndex])
+  @@index([workoutTableId])
+  @@map("workout_table_rows")
+}
+
+model WorkoutSession {
+  id             String    @id @default(uuid())
+  userId         String    @map("user_id")
+  workoutTableId String?   @map("workout_table_id")
+  startedAt      DateTime  @map("started_at")
+  completedAt    DateTime? @map("completed_at")
+  status         String    @default("started") @db.VarChar(20)
+  notes          String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  user         User                @relation(fields: [userId], references: [id])
+  workoutTable WorkoutTable?       @relation(fields: [workoutTableId], references: [id])
+  rows         WorkoutSessionRow[]
+
+  @@index([userId])
+  @@index([userId, startedAt])
+  @@map("workout_sessions")
+}
+
+model WorkoutSessionRow {
+  id                        String   @id @default(uuid())
+  workoutSessionId          String   @map("workout_session_id")
+  workoutTableRowId         String?  @map("workout_table_row_id")
+  exerciseId                String   @map("exercise_id")
+  plannedSetsSnapshot       Int?     @map("planned_sets_snapshot")
+  plannedTargetValueSnapshot Float?  @map("planned_target_value_snapshot")
+  measurementTypeSnapshot   String?  @map("measurement_type_snapshot") @db.VarChar(20)
+  orderIndex                Int?     @map("order_index")
+  notes                     String?
+  createdAt                 DateTime @default(now()) @map("created_at")
+
+  workoutSession  WorkoutSession   @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+  workoutTableRow WorkoutTableRow? @relation(fields: [workoutTableRowId], references: [id])
+  exercise        Exercise         @relation(fields: [exerciseId], references: [id])
+  performedSets   PerformedSet[]
+
+  @@index([workoutSessionId])
+  @@map("workout_session_rows")
+}
+
+model PerformedSet {
+  id                  String   @id @default(uuid())
+  workoutSessionRowId String   @map("workout_session_row_id")
+  setNumber           Int      @map("set_number")
+  actualValue         Float    @map("actual_value")
+  notes               String?
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  workoutSessionRow WorkoutSessionRow @relation(fields: [workoutSessionRowId], references: [id], onDelete: Cascade)
+
+  @@unique([workoutSessionRowId, setNumber])
+  @@index([workoutSessionRowId])
+  @@map("performed_sets")
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  tokenHash String    @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+model WorkoutTableShare {
+  id               String    @id @default(uuid())
+  workoutTableId   String    @map("workout_table_id")
+  sharedByUserId   String    @map("shared_by_user_id")
+  sharedWithUserId String    @map("shared_with_user_id")
+  permission       String    @db.VarChar(20)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  revokedAt        DateTime? @map("revoked_at")
+
+  workoutTable   WorkoutTable @relation(fields: [workoutTableId], references: [id], onDelete: Cascade)
+  sharedByUser   User         @relation("SharesSent", fields: [sharedByUserId], references: [id])
+  sharedWithUser User         @relation("SharesReceived", fields: [sharedWithUserId], references: [id])
+
+  @@unique([workoutTableId, sharedWithUserId])
+  @@index([sharedWithUserId])
+  @@map("workout_table_shares")
+}

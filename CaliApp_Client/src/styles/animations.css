@@ -1,0 +1,59 @@
+/* ============================================================================
+   CaliAPP 2026 — animations.css
+   Keyframes + utility classes for micro-animations.
+   ============================================================================ */
+
+@keyframes cali-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes cali-pop {
+  0%   { transform: scale(0.7); opacity: 0; }
+  60%  { transform: scale(1.1); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes cali-drift {
+  0%   { transform: translate(0,0) scale(1); }
+  100% { transform: translate(10%, -8%) scale(1.18); }
+}
+
+@keyframes cali-pulse-glow {
+  0%, 100% { box-shadow: var(--lime-glow-sm); }
+  50%      { box-shadow: var(--lime-glow); }
+}
+
+@keyframes cali-shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes cali-wave {
+  0%, 60%, 100% { transform: rotate(0deg); }
+  10%, 30%      { transform: rotate(18deg); }
+  20%, 40%      { transform: rotate(-12deg); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@layer utilities {
+  .animate-rise        { animation: cali-rise var(--d-med) var(--e-out-soft) backwards; }
+  .animate-pop         { animation: cali-pop var(--d-base) var(--e-spring) backwards; }
+  .animate-pulse-glow  { animation: cali-pulse-glow 2.4s var(--e-out) infinite; }
+  .animate-wave        { animation: cali-wave 2.4s ease-in-out infinite; transform-origin: 70% 70%; display: inline-block; }
+
+  .spin { animation: spin 1s linear infinite; }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

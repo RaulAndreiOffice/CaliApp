@@ -1,0 +1,250 @@
+/* ============================================================================
+   CaliAPP 2026 — theme.css
+   Drop-in. Keeps ALL original variable names, remaps to 2026 ink palette.
+   ============================================================================ */
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* ---- Ink scale (cool charcoal, NOT pure grey) ---- */
+  --ink-0:   #050608;
+  --ink-1:   #0a0c10;
+  --ink-2:   #11141a;
+  --ink-3:   #181c24;
+  --ink-4:   #232833;
+  --ink-5:   #2e3441;
+  --ink-6:   #3a4150;
+  --ink-7:   #5a6273;
+  --ink-8:   #8a93a3;
+  --ink-9:   #c5cad4;
+  --ink-10:  #f4f5f7;
+
+  /* ---- Lime (brand accent) ---- */
+  --lime-300: #b8ff4d;
+  --lime-400: #9bff1a;
+  --lime-500: #84ff00;
+  --lime-600: #6fd400;
+  --lime-glow:    0 0 32px rgba(132, 255, 0, 0.45);
+  --lime-glow-sm: 0 0 12px rgba(132, 255, 0, 0.35);
+  --lime-glow-lg: 0 0 64px rgba(132, 255, 0, 0.5);
+
+  /* ---- Stat accents ---- */
+  --accent-blue:    #4d8bff;
+  --accent-orange:  #ff8a3d;
+  --accent-cyan:    #22d3ee;
+  --accent-violet:  #a855f7;
+
+  /* ---- Glass / mesh ---- */
+  --glass-bg:        rgba(20, 24, 32, 0.55);
+  --glass-bg-strong: rgba(15, 18, 24, 0.78);
+  --glass-border:    rgba(255, 255, 255, 0.06);
+  --glass-blur:      24px;
+  --glass-blur-lg:   40px;
+
+  /* ---- Type families ---- */
+  --font-display: "Geist", "Inter Tight", system-ui, sans-serif;
+  --font-sans:    "Geist", "Inter", system-ui, sans-serif;
+  --font-mono:    "Geist Mono", "JetBrains Mono", ui-monospace, monospace;
+  --font-serif:   "Instrument Serif", Georgia, serif;
+
+  /* ---- Motion ---- */
+  --d-instant: 80ms;
+  --d-fast:    160ms;
+  --d-base:    240ms;
+  --d-med:     380ms;
+  --d-slow:    560ms;
+  --e-out:     cubic-bezier(0.22, 1, 0.36, 1);
+  --e-out-soft: cubic-bezier(0.16, 1, 0.3, 1);
+  --e-spring:  cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ---- Inset hairline (top edge highlight — 2026 hallmark) ---- */
+  --inset-hairline: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --inset-hairline-strong: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+  /* ---- Shadows ---- */
+  --shadow-xs:  0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-sm:  0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-md:  0 8px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.3);
+  --shadow-lg:  0 20px 48px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.35);
+  --shadow-2xl: 0 32px 80px rgba(0, 0, 0, 0.6), 0 8px 24px rgba(0, 0, 0, 0.4);
+
+  /* ---- Tinted surfaces ---- */
+  --tint-lime:    rgba(132, 255, 0, 0.10);
+  --tint-blue:    rgba(77, 139, 255, 0.10);
+  --tint-orange:  rgba(255, 138, 61, 0.10);
+  --tint-success: rgba(34, 197, 94, 0.10);
+
+  /* ---- Radii ---- */
+  --r-xs:   6px;
+  --r-sm:   8px;
+  --r-md:   12px;
+  --r-lg:   16px;
+  --r-xl:   20px;
+  --r-pill: 999px;
+
+  /* ============================================================================
+     ORIGINAL CALIAPP VARIABLE NAMES — kept identical, values updated to 2026
+     ============================================================================ */
+
+  --font-size: 15px;
+  --background: var(--ink-0);
+  --foreground: var(--ink-10);
+  --card: var(--ink-2);
+  --card-foreground: var(--ink-10);
+  --popover: var(--ink-3);
+  --popover-foreground: var(--ink-10);
+  --primary: var(--lime-500);
+  --primary-foreground: var(--ink-0);
+  --secondary: var(--ink-4);
+  --secondary-foreground: var(--ink-10);
+  --muted: var(--ink-3);
+  --muted-foreground: var(--ink-7);
+  --accent: var(--lime-500);
+  --accent-foreground: var(--ink-0);
+  --destructive: #ff4d4d;
+  --destructive-foreground: #ffffff;
+  --border: var(--ink-4);
+  --input: var(--ink-5);
+  --input-background: var(--ink-2);
+  --switch-background: var(--ink-4);
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: var(--lime-500);
+  --chart-1: var(--lime-500);
+  --chart-2: var(--accent-blue);
+  --chart-3: var(--accent-orange);
+  --chart-4: var(--accent-cyan);
+  --chart-5: var(--accent-violet);
+  --success: #22c55e;
+  --warning: #f97316;
+  --info:    #3b82f6;
+  --radius:  1rem; /* was 0.5rem — bumped for 2026 */
+  --sidebar: var(--ink-1);
+  --sidebar-foreground: var(--ink-10);
+  --sidebar-primary: var(--lime-500);
+  --sidebar-primary-foreground: var(--ink-0);
+  --sidebar-accent: var(--ink-3);
+  --sidebar-accent-foreground: var(--ink-10);
+  --sidebar-border: var(--ink-4);
+  --sidebar-ring: var(--lime-500);
+}
+
+.dark {
+  --background: #020305;
+  --card: #0f1218;
+  --primary: var(--lime-400);
+  --primary-foreground: var(--ink-0);
+  --border: #1e232c;
+  --input: #262b35;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --radius-sm: calc(var(--radius) - 8px);
+  --radius-md: calc(var(--radius) - 4px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  h1 { font-family: var(--font-display); font-size: 2rem;    font-weight: 600; line-height: 1.1; letter-spacing: -0.035em; }
+  h2 { font-family: var(--font-display); font-size: 1.5rem;  font-weight: 600; line-height: 1.2; letter-spacing: -0.025em; }
+  h3 { font-family: var(--font-display); font-size: 1.25rem; font-weight: 500; line-height: 1.2; letter-spacing: -0.02em; }
+  h4 { font-size: 1.05rem; font-weight: 500; line-height: 1.3; }
+
+  label { font-size: 0.9rem; font-weight: var(--font-weight-medium); line-height: 1.5; }
+  button { font-size: 0.9rem; font-weight: var(--font-weight-medium); line-height: 1.5; letter-spacing: -0.01em; }
+  input { font-size: 0.9rem; font-weight: var(--font-weight-normal); line-height: 1.5; }
+
+  .tabular, .font-mono {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum", "ss01";
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .touch-manipulation { touch-action: manipulation; }
+
+  /* Glow utilities for primary CTAs */
+  .glow-lime    { box-shadow: var(--lime-glow-sm), var(--inset-hairline-strong); }
+  .glow-lime-lg { box-shadow: var(--lime-glow),    var(--inset-hairline-strong); }
+
+  /* Inset hairline for elevated cards */
+  .hairline        { box-shadow: var(--inset-hairline); }
+  .hairline-strong { box-shadow: var(--inset-hairline-strong); }
+
+  /* Glass surface (for modals / floating panels ONLY) */
+  .glass {
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(var(--glass-blur-lg));
+    -webkit-backdrop-filter: blur(var(--glass-blur-lg));
+    border: 1px solid var(--glass-border);
+  }
+
+  /* Serif accent for greetings */
+  .serif-accent {
+    font-family: var(--font-serif);
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+
+  /* Press down utility */
+  .press-down:active { transform: scale(0.97); transition: transform var(--d-fast) var(--e-out); }
+}

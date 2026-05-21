@@ -1,0 +1,14 @@
+.loading-spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  color: var(--color-text-secondary);
+}
+
+.loading-spinner__icon {
+  animation: spin 1s linear infinite;
+}
+
+.loading-spinner__label {
+  font-size: var(--font-sm);
+}
