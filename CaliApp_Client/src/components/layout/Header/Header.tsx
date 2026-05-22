@@ -15,7 +15,7 @@ export function Header() {
   }
 
   return (
-    <header className="hidden md:flex items-center gap-3 h-14 px-6 border-b border-border bg-background/80 backdrop-blur-xl">
+    <header className="hidden md:flex sticky top-0 z-30 w-full shrink-0 items-center gap-3 h-14 px-6 border-b border-border bg-background/80 backdrop-blur-xl">
       <div className="flex-1" />
 
       <div className="flex items-center gap-2.5 px-2">
