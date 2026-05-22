@@ -16,11 +16,10 @@ import {
   useWorkoutTables,
 } from '../../../hooks/api/useWorkoutTables';
 import { useStartSession } from '../../../hooks/api/useWorkoutSessions';
-import { useWorkoutStore } from '../../../stores/workout.store';
+import { useElapsedSeconds, useWorkoutStore } from '../../../stores/workout.store';
 import type { WorkoutTable, WorkoutTableRow } from '../../../types/workoutTable.types';
 
 type SetValue = number | null;
-type PerformedSets = Record<string, SetValue[]>;
 type EditingCell = { exerciseId: string; setIndex: number } | null;
 
 function formatTime(s: number) {
@@ -34,16 +33,24 @@ export function PlansBoard() {
   const { data: tables, isLoading } = useWorkoutTables();
   const createMutation = useCreateWorkoutTable();
   const startSessionMutation = useStartSession();
-  const startSessionInStore = useWorkoutStore((s) => s.startSession);
+
+  const activeSessionId = useWorkoutStore((s) => s.activeSessionId);
+  const activeTableId = useWorkoutStore((s) => s.activeTableId);
+  const performedSets = useWorkoutStore((s) => s.performedSets);
+  const startWorkoutInStore = useWorkoutStore((s) => s.startSession);
+  const setPerformedValue = useWorkoutStore((s) => s.setPerformedValue);
+  const endWorkoutInStore = useWorkoutStore((s) => s.endSession);
+  const elapsed = useElapsedSeconds();
+  const isActive = !!activeSessionId;
 
   const [createOpen, setCreateOpen] = useState(false);
-  const [selectedId, setSelectedId] = useState<string>('');
-  const [isActive, setIsActive] = useState(false);
-  const [elapsed, setElapsed] = useState(0);
-  const [performedSets, setPerformedSets] = useState<PerformedSets>({});
+  const [selectedIdLocal, setSelectedIdLocal] = useState<string>('');
   const [editingCell, setEditingCell] = useState<EditingCell>(null);
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // While a workout is active, force the selected tab to the active table.
+  const selectedId = isActive && activeTableId ? activeTableId : selectedIdLocal;
 
   const activeSelectedId = selectedId || tables?.[0]?.id || '';
   const selectedPlanSummary: WorkoutTable | undefined = tables?.find(
@@ -57,12 +64,6 @@ export function PlansBoard() {
   ].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
 
   useEffect(() => {
-    if (!isActive) return;
-    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
-    return () => clearInterval(id);
-  }, [isActive]);
-
-  useEffect(() => {
     if (editingCell) {
       setTimeout(() => {
         inputRef.current?.focus();
@@ -72,9 +73,7 @@ export function PlansBoard() {
   }, [editingCell]);
 
   const reset = () => {
-    setIsActive(false);
-    setElapsed(0);
-    setPerformedSets({});
+    endWorkoutInStore();
     setEditingCell(null);
     setInputValue('');
   };
@@ -85,10 +84,7 @@ export function PlansBoard() {
       { workoutTableId: selectedPlan.id },
       {
         onSuccess: (session) => {
-          startSessionInStore(session.id);
-          setIsActive(true);
-          setElapsed(0);
-          setPerformedSets({});
+          startWorkoutInStore(session.id, selectedPlan.id);
           toast.success(`${selectedPlan.name} started!`);
         },
         onError: () => toast.error('Eroare la pornire'),
@@ -102,11 +98,7 @@ export function PlansBoard() {
   const commitSet = (exerciseId: string, setIndex: number, raw: string) => {
     const num = Number.parseInt(raw, 10);
     if (!Number.isNaN(num) && num >= 0) {
-      setPerformedSets((prev) => {
-        const arr = [...(prev[exerciseId] ?? [])];
-        arr[setIndex] = num;
-        return { ...prev, [exerciseId]: arr };
-      });
+      setPerformedValue(exerciseId, setIndex, num);
     }
     setEditingCell(null);
     setInputValue('');
@@ -123,10 +115,10 @@ export function PlansBoard() {
   const allDone = totalSets > 0 && completedSets >= totalSets;
 
   const finishWorkout = () => {
-    setIsActive(false);
     toast.success(
       `Done! ${formatTime(elapsed)} · ${completedSets}/${totalSets} sets`,
     );
+    endWorkoutInStore();
     navigate('/workout');
   };
 
@@ -173,7 +165,15 @@ export function PlansBoard() {
           <button
             key={plan.id}
             type="button"
-            onClick={() => { setSelectedId(plan.id); reset(); }}
+            onClick={() => {
+              if (isActive) {
+                toast.error('Termina sau anuleaza antrenamentul activ inainte sa schimbi planul');
+                return;
+              }
+              setSelectedIdLocal(plan.id);
+              setEditingCell(null);
+              setInputValue('');
+            }}
             className={cn(
               'px-3.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all',
               activeSelectedId === plan.id

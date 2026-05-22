@@ -27,7 +27,7 @@ export function WorkoutTableDetailPage() {
       { workoutTableId: id },
       {
         onSuccess: (session) => {
-          startSessionInStore(session.id);
+          startSessionInStore(session.id, id);
           navigate('/workout');
         },
         onError: () => toast.error('Eroare la pornire'),
