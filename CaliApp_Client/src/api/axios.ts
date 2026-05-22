@@ -10,16 +10,75 @@ export const api = axios.create({
   },
 });
 
-api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken;
+let isRefreshing = false;
+let refreshQueue: Array<(token: string | null) => void> = [];
+let refreshPromise: Promise<AuthTokens> | null = null;
+
+function getTokenExpiresAt(token: string): number | null {
+  try {
+    const [, payload] = token.split('.');
+    if (!payload) return null;
+    const normalizedPayload = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const json = JSON.parse(window.atob(normalizedPayload)) as { exp?: number };
+    return typeof json.exp === 'number' ? json.exp * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+function shouldRefreshToken(token: string | null): boolean {
+  if (!token) return false;
+  const expiresAt = getTokenExpiresAt(token);
+  if (!expiresAt) return false;
+  return expiresAt - Date.now() < 60_000;
+}
+
+async function refreshTokens(): Promise<AuthTokens> {
+  if (refreshPromise) return refreshPromise;
+
+  const { refreshToken, updateTokens, logout } = useAuthStore.getState();
+  if (!refreshToken) {
+    logout();
+    throw new Error('Missing refresh token');
+  }
+
+  refreshPromise = axios
+    .post<{ success: true; data: AuthTokens }>(`${API_URL}/auth/refresh`, {
+      refreshToken,
+    })
+    .then((response) => {
+      const tokens = response.data.data;
+      updateTokens(tokens);
+      return tokens;
+    })
+    .catch((error) => {
+      logout();
+      throw error;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
+}
+
+api.interceptors.request.use(async (config) => {
+  let token = useAuthStore.getState().accessToken;
+
+  if (token && shouldRefreshToken(token) && !config.url?.includes('/auth/')) {
+    try {
+      const tokens = await refreshTokens();
+      token = tokens.accessToken;
+    } catch {
+      token = null;
+    }
+  }
+
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });
-
-let isRefreshing = false;
-let refreshQueue: Array<(token: string | null) => void> = [];
 
 function resolveQueue(token: string | null) {
   refreshQueue.forEach((cb) => cb(token));
@@ -54,20 +113,10 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const { refreshToken, updateTokens, logout } = useAuthStore.getState();
-
-      if (!refreshToken) {
-        logout();
-        return Promise.reject(error);
-      }
+      const { logout } = useAuthStore.getState();
 
       try {
-        const response = await axios.post<{ success: true; data: AuthTokens }>(
-          `${API_URL}/auth/refresh`,
-          { refreshToken }
-        );
-        const tokens = response.data.data;
-        updateTokens(tokens);
+        const tokens = await refreshTokens();
         originalRequest.headers.Authorization = `Bearer ${tokens.accessToken}`;
         resolveQueue(tokens.accessToken);
         return api(originalRequest);

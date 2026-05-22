@@ -7,12 +7,14 @@ import { Input } from '../../../components/ui/Input';
 import { Button } from '../../../components/ui/Button';
 import { useAuthStore } from '../../../stores/auth.store';
 import { userApi } from '../../../api/user.api';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import type { ChangePasswordRequest, UpdateUserRequest } from '../../../types/user.types';
 
 export function ProfilePage() {
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
   const logout = useAuthStore((s) => s.logout);
+  const { language, setLanguage } = useLanguage();
 
   const profileForm = useForm<UpdateUserRequest>({
     defaultValues: { username: user?.username ?? '' },
@@ -20,8 +22,8 @@ export function ProfilePage() {
   const passwordForm = useForm<ChangePasswordRequest>();
 
   // Training prefs (local state — not yet persisted to API)
-  const [fitnessLevel, setFitnessLevel] = useState('Intermediate');
-  const [trainingDays, setTrainingDays] = useState('4 days');
+  const [fitnessLevel, setFitnessLevel] = useState('Intermediar');
+  const [trainingDays, setTrainingDays] = useState('4 zile');
   const [maxDuration, setMaxDuration] = useState(60);
   const [injuryNotes, setInjuryNotes] = useState('');
 
@@ -34,9 +36,9 @@ export function ProfilePage() {
     try {
       const updated = await userApi.updateMe(data);
       updateUser(updated);
-      toast.success('Profil actualizat');
+      toast.success('Profilul a fost actualizat');
     } catch {
-      toast.error('Actualizarea profilului a esuat');
+      toast.error('Actualizarea profilului a eșuat');
     }
   }
 
@@ -44,9 +46,9 @@ export function ProfilePage() {
     try {
       await userApi.changePassword(data);
       passwordForm.reset();
-      toast.success('Parola schimbata');
+      toast.success('Parola a fost schimbată');
     } catch {
-      toast.error('Schimbarea parolei a esuat');
+      toast.error('Schimbarea parolei a eșuat');
     }
   }
 
@@ -56,9 +58,9 @@ export function ProfilePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Settings</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">Setări</h1>
         <p className="text-sm sm:text-base text-muted-foreground mt-1">
-          Manage your account and preferences
+          Gestionează-ți contul și preferințele
         </p>
       </div>
 
@@ -74,16 +76,16 @@ export function ProfilePage() {
                 <div className="p-2 bg-primary/10 rounded-xl">
                   <User className="w-5 h-5 text-primary" />
                 </div>
-                <h3 className="font-semibold text-lg">Profile Information</h3>
+                <h3 className="font-semibold text-lg">Informații Profil</h3>
               </div>
 
               <Input label="Email" value={user?.email ?? ''} disabled />
               <Input
-                label="Username"
+                label="Nume utilizator"
                 {...profileForm.register('username')}
               />
               <Button type="submit" className="w-full">
-                Update Profile
+                Actualizează Profilul
               </Button>
             </form>
           </CardContent>
@@ -100,26 +102,26 @@ export function ProfilePage() {
                 <div className="p-2 bg-primary/10 rounded-xl">
                   <Lock className="w-5 h-5 text-primary" />
                 </div>
-                <h3 className="font-semibold text-lg">Security</h3>
+                <h3 className="font-semibold text-lg">Securitate</h3>
               </div>
 
               <Input
-                label="Current Password"
+                label="Parola curentă"
                 type="password"
                 {...passwordForm.register('currentPassword')}
               />
               <Input
-                label="New Password"
+                label="Parola nouă"
                 type="password"
                 {...passwordForm.register('newPassword')}
               />
               <Input
-                label="Confirm New Password"
+                label="Confirmă parola nouă"
                 type="password"
-                placeholder="Repeat new password"
+                placeholder="Repetă parola nouă"
               />
               <Button type="submit" className="w-full">
-                Change Password
+                Schimbă Parola
               </Button>
             </form>
           </CardContent>
@@ -129,40 +131,40 @@ export function ProfilePage() {
         <Card>
           <CardContent>
             <div className="space-y-4">
-              <h3 className="font-medium text-lg">Training Preferences</h3>
+              <h3 className="font-medium text-lg">Preferințe Antrenament</h3>
 
               <div>
-                <label className="text-sm mb-2 block">Fitness Level</label>
+                <label className="text-sm mb-2 block">Nivel Fitness</label>
                 <select
                   className={selectClasses}
                   value={fitnessLevel}
                   onChange={(e) => setFitnessLevel(e.target.value)}
                 >
-                  <option>Beginner</option>
-                  <option>Intermediate</option>
-                  <option>Advanced</option>
+                  <option>Începător</option>
+                  <option>Intermediar</option>
+                  <option>Avansat</option>
                 </select>
               </div>
 
               <div>
                 <label className="text-sm mb-2 block">
-                  Training Days per Week
+                  Zile de Antrenament pe Săptămână
                 </label>
                 <select
                   className={selectClasses}
                   value={trainingDays}
                   onChange={(e) => setTrainingDays(e.target.value)}
                 >
-                  <option>3 days</option>
-                  <option>4 days</option>
-                  <option>5 days</option>
-                  <option>6 days</option>
+                  <option>3 zile</option>
+                  <option>4 zile</option>
+                  <option>5 zile</option>
+                  <option>6 zile</option>
                 </select>
               </div>
 
               <div>
                 <label className="text-sm mb-2 block">
-                  Max Session Duration (minutes)
+                  Durata Maximă Sesiune (minute)
                 </label>
                 <input
                   type="number"
@@ -173,17 +175,17 @@ export function ProfilePage() {
               </div>
 
               <Input
-                label="Injury Notes (optional)"
-                placeholder="Any injuries or limitations..."
+                label="Note Accidentări (opțional)"
+                placeholder="Accidentări sau limitări..."
                 value={injuryNotes}
                 onChange={(e) => setInjuryNotes(e.target.value)}
               />
 
               <Button
                 className="w-full"
-                onClick={() => toast.success('Preferences saved')}
+                onClick={() => toast.success('Preferințele au fost salvate')}
               >
-                Save Preferences
+                Salvează Preferințele
               </Button>
             </div>
           </CardContent>
@@ -193,13 +195,26 @@ export function ProfilePage() {
         <Card>
           <CardContent>
             <div className="space-y-4">
-              <h3 className="font-medium text-lg">App Preferences</h3>
+              <h3 className="font-medium text-lg">Preferințe Aplicație</h3>
+
+              {/* Setare Limba */}
+              <div>
+                <label className="text-sm mb-2 block">Limba Interfeței</label>
+                <select
+                  className={selectClasses}
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value as 'ro' | 'en')}
+                >
+                  <option value="ro">Română</option>
+                  <option value="en">English</option>
+                </select>
+              </div>
 
               <div className="flex items-center justify-between p-3.5 bg-muted/15 rounded-xl border border-border/20 hover:bg-muted/25 transition-all duration-200">
                 <div>
-                  <p className="font-medium">Email Notifications</p>
+                  <p className="font-medium">Notificări prin Email</p>
                   <p className="text-sm text-muted-foreground">
-                    Receive workout reminders
+                    Primește mementouri pentru antrenament
                   </p>
                 </div>
                 <input
@@ -212,9 +227,9 @@ export function ProfilePage() {
 
               <div className="flex items-center justify-between p-3.5 bg-muted/15 rounded-xl border border-border/20 hover:bg-muted/25 transition-all duration-200">
                 <div>
-                  <p className="font-medium">AI Recommendations</p>
+                  <p className="font-medium">Recomandări AI</p>
                   <p className="text-sm text-muted-foreground">
-                    Enable personalized suggestions
+                    Activează sugestii personalizate
                   </p>
                 </div>
                 <input
@@ -227,9 +242,9 @@ export function ProfilePage() {
 
               <div className="flex items-center justify-between p-3.5 bg-muted/15 rounded-xl border border-border/20 hover:bg-muted/25 transition-all duration-200">
                 <div>
-                  <p className="font-medium">Weekly Summary</p>
+                  <p className="font-medium">Rezumat Săptămânal</p>
                   <p className="text-sm text-muted-foreground">
-                    Get weekly progress emails
+                    Primește progresul săptămânal pe email
                   </p>
                 </div>
                 <input
@@ -244,27 +259,20 @@ export function ProfilePage() {
         </Card>
       </div>
 
-      {/* Danger Zone */}
-      <Card className="border-destructive/30 bg-destructive/5">
-        <CardContent>
-          <div className="space-y-4">
-            <h3 className="font-medium text-lg text-destructive">
-              Danger Zone
-            </h3>
-            <Button
-              variant="danger"
-              className="w-full"
-              onClick={() => {
-                logout();
-                toast.success('Logged out');
-              }}
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Logout Area - Scoaterea din Danger Zone */}
+      <div className="pt-4 flex justify-end">
+        <Button
+          variant="secondary"
+          className="w-full sm:w-auto text-muted-foreground hover:text-foreground border-border hover:bg-muted/50 transition-colors"
+          onClick={() => {
+            logout();
+            toast.success('Te-ai deconectat cu succes');
+          }}
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Deconectare
+        </Button>
+      </div>
     </div>
   );
 }

@@ -2,8 +2,8 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   Moon, ClipboardList, Activity, Layers, TrendingUp, Lightbulb, BarChart3,
-  PieChart as PieChartIcon, Table as TableIcon, GripVertical, X, Plus,
-  LayoutDashboard, Check,
+  PieChart as PieChartIcon, Table as TableIcon, GripVertical, X, Plus, Info,
+  LayoutDashboard, Check
 } from 'lucide-react';
 import {
   Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart,
@@ -105,7 +105,13 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
   if (id === 'stat-hardsets') {
     return (
       <>
-        <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight text-primary">{currentWeek?.hardSets ?? 0}</p>
+        <div className="flex items-center gap-1.5 group relative w-fit mb-1">
+          <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight text-primary">{currentWeek?.hardSets ?? 0}</p>
+          <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
+          <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] font-normal text-foreground z-50 pointer-events-none">
+            Seturi grele, duse aproape de epuizare.
+          </div>
+        </div>
         <p className="text-xs text-muted-foreground mt-1">proxy din seturi completate</p>
       </>
     );
@@ -113,7 +119,13 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
   if (id === 'stat-volume') {
     return (
       <>
-        <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{formatNumber(currentWeek?.equivalentReps ?? 0)}</p>
+        <div className="flex items-center gap-1.5 group relative w-fit mb-1">
+          <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{formatNumber(currentWeek?.equivalentReps ?? 0)}</p>
+          <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
+          <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-56 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] font-normal text-foreground z-50 pointer-events-none">
+            Echivalează exercițiile între ele: 1 repetare = 1 punct, 1 sec. de izometrie = 0.5 puncte.
+          </div>
+        </div>
         <p className="text-xs text-muted-foreground mt-1">reps + secunde/2</p>
       </>
     );
@@ -121,7 +133,13 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
   if (id === 'stat-acwr') {
     return (
       <>
-        <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{currentWeek?.acwr?.toFixed(2) ?? '-'}</p>
+        <div className="flex items-center gap-1.5 group relative w-fit mb-1">
+          <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{currentWeek?.acwr?.toFixed(2) ?? '-'}</p>
+          <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
+          <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-64 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] font-normal text-foreground z-50 pointer-events-none">
+            Acute:Chronic Workload Ratio. Compara volumul saptamanii curente cu media ultimelor 4 saptamani. Un spike (&gt; 1.5) creste riscul de accidentare.
+          </div>
+        </div>
         <p className="text-xs text-muted-foreground mt-1">spike peste 1.5</p>
       </>
     );
@@ -129,7 +147,13 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
   if (id === 'stat-pushpull') {
     return (
       <>
-        <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{balance?.pushPullRatio?.toFixed(2) ?? '-'}</p>
+        <div className="flex items-center gap-1.5 group relative w-fit mb-1">
+          <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{balance?.pushPullRatio?.toFixed(2) ?? '-'}</p>
+          <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
+          <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] font-normal text-foreground z-50 pointer-events-none">
+            Ideal aproape de 1:1. Multe seturi de împins (Push) fără tras (Pull) pot provoca dezechilibre musculare.
+          </div>
+        </div>
         <p className="text-xs text-muted-foreground mt-1">{getBalanceText(balance?.status ?? 'insufficient-data')}</p>
       </>
     );
