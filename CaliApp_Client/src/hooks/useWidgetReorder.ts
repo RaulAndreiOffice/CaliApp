@@ -13,6 +13,7 @@ const LONG_PRESS_MS = 400;
 const TOUCH_SLOP_PX = 8;
 const AUTOSCROLL_EDGE_PX = 72;
 const AUTOSCROLL_SPEED_PX = 14;
+const CROSS_THRESHOLD = 0.5;
 
 interface UseWidgetReorderOptions {
   enabled: boolean;
@@ -27,6 +28,11 @@ interface UseWidgetReorderOptions {
 
 interface DragHandlers {
   onPointerDown: (e: React.PointerEvent<HTMLElement>) => void;
+}
+
+interface WidgetHit {
+  id: string;
+  rect: DOMRect;
 }
 
 export interface UseWidgetReorderResult {
@@ -48,6 +54,7 @@ interface DragState {
   longPressTimer: number | null;
   autoScrollRaf: number | null;
   autoScrollDir: 0 | 1 | -1;
+  capturedElement: HTMLElement | null;
 }
 
 export function useWidgetReorder({
@@ -81,6 +88,7 @@ export function useWidgetReorder({
     longPressTimer: null,
     autoScrollRaf: null,
     autoScrollDir: 0,
+    capturedElement: null,
   });
 
   const clearLongPress = useCallback(() => {
@@ -129,7 +137,7 @@ export function useWidgetReorder({
     [stopAutoScroll, tickAutoScroll],
   );
 
-  const findClosestWidgetId = (clientX: number, clientY: number, sourceId: string): string | null => {
+  const findClosestWidget = (clientX: number, clientY: number, sourceId: string): WidgetHit | null => {
     const widgets = Array.from(
       document.querySelectorAll<HTMLElement>('[data-widget-id]')
     ).filter((element) => {
@@ -137,7 +145,7 @@ export function useWidgetReorder({
       return id && id !== sourceId;
     });
 
-    let closestId: string | null = null;
+    let closest: WidgetHit | null = null;
     let closestDistance = Number.POSITIVE_INFINITY;
 
     for (const widget of widgets) {
@@ -156,20 +164,32 @@ export function useWidgetReorder({
 
       if (distance < closestDistance) {
         closestDistance = distance;
-        closestId = widget.dataset.widgetId ?? null;
+        closest = {
+          id: widget.dataset.widgetId ?? '',
+          rect,
+        };
       }
     }
 
-    return closestId;
+    return closest?.id ? closest : null;
   };
 
-  const reorderNow = useCallback((sourceId: string, targetId: string) => {
+  const reorderNow = useCallback((sourceId: string, target: WidgetHit, clientY: number) => {
+    const targetId = target.id;
     if (sourceId === targetId) return;
 
     const list = idsRef.current;
     const from = list.indexOf(sourceId);
     const to = list.indexOf(targetId);
     if (from === -1 || to === -1 || from === to) return;
+
+    const targetMiddleY = target.rect.top + target.rect.height * CROSS_THRESHOLD;
+    const movingDown = from < to;
+    const hasCrossed = movingDown
+      ? clientY > targetMiddleY
+      : clientY < targetMiddleY;
+
+    if (!hasCrossed) return;
 
     const next = [...list];
     next.splice(from, 1);
@@ -182,9 +202,17 @@ export function useWidgetReorder({
     const s = stateRef.current;
     clearLongPress();
     stopAutoScroll();
+    if (s.capturedElement && s.pointerId !== null) {
+      try {
+        s.capturedElement.releasePointerCapture(s.pointerId);
+      } catch {
+        /* ignore */
+      }
+    }
     s.pointerId = null;
     s.sourceId = null;
     s.activated = false;
+    s.capturedElement = null;
     setDraggingId(null);
     setOverId(null);
     setPressingId(null);
@@ -221,9 +249,9 @@ export function useWidgetReorder({
 
       e.preventDefault();
       if (s.sourceId) {
-        const id = findClosestWidgetId(e.clientX, e.clientY, s.sourceId);
-        setOverId(id);
-        if (id) reorderNow(s.sourceId, id);
+        const target = findClosestWidget(e.clientX, e.clientY, s.sourceId);
+        setOverId(target?.id ?? null);
+        if (target) reorderNow(s.sourceId, target, e.clientY);
       }
       maybeAutoScroll(e.clientY);
     };
@@ -271,6 +299,13 @@ export function useWidgetReorder({
         s.startY = e.clientY;
         s.sourceId = id;
         s.activated = false;
+        s.capturedElement = e.currentTarget;
+
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId);
+        } catch {
+          /* ignore */
+        }
 
         if (e.pointerType === 'touch') {
           setPressingId(id);

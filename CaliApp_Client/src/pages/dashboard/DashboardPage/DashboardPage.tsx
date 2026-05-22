@@ -275,7 +275,7 @@ export function DashboardPage() {
       {editMode && (
         <p className="text-xs text-muted-foreground bg-card border border-border rounded-lg px-3 py-2 leading-relaxed">
           <span className="hidden sm:inline">Trage widget-urile pentru a le reordona</span>
-          <span className="sm:hidden">Tine apasat pe widget cateva secunde, apoi trage pentru a-l muta</span>
+          <span className="sm:hidden">Tine apasat pe widget, apoi trage. Apasa Gata ca sa revii la scroll normal</span>
           {' · '}
           <strong className="text-foreground">×</strong> pentru a elimina · <strong className="text-foreground">Adauga</strong> pentru a adauga
         </p>
@@ -314,7 +314,7 @@ export function DashboardPage() {
                 'bg-card border rounded-2xl hairline transition-all duration-150 select-none',
                 isLg && 'sm:col-span-2',
                 editMode
-                  ? 'border-dashed border-border/60 cursor-grab active:cursor-grabbing touch-pan-y hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/60'
+                  ? 'border-dashed border-border/60 cursor-grab active:cursor-grabbing touch-none hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/60'
                   : 'border-border hover:border-primary/30',
                 pressing && 'scale-[0.985] border-primary/40 shadow-[0_0_0_3px_rgba(132,255,0,0.18)]',
                 isDragOver && !isDragging && 'border-primary/60 border-solid bg-primary/5',
