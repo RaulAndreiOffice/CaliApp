@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useState } from 'react';
+import toast from 'react-hot-toast';
 import {
   Moon, ClipboardList, Activity, Layers, TrendingUp, Lightbulb, BarChart3,
   PieChart as PieChartIcon, Table as TableIcon, GripVertical, X, Plus,
@@ -13,6 +14,7 @@ import { cn } from '../../../utils/cn';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner/LoadingSpinner';
 import { PlansBoard } from '../../../components/workout-tables/PlansBoard/PlansBoard';
 import { useTrainingLoadDashboard } from '../../../hooks/api/useStats';
+import { useWidgetReorder } from '../../../hooks/useWidgetReorder';
 import type {
   TrainingLoadDashboard,
   TrainingLoadZone,
@@ -103,7 +105,7 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
   if (id === 'stat-hardsets') {
     return (
       <>
-        <p className="text-2xl font-bold tabular-nums leading-tight text-primary">{currentWeek?.hardSets ?? 0}</p>
+        <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight text-primary">{currentWeek?.hardSets ?? 0}</p>
         <p className="text-xs text-muted-foreground mt-1">proxy din seturi completate</p>
       </>
     );
@@ -111,7 +113,7 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
   if (id === 'stat-volume') {
     return (
       <>
-        <p className="text-2xl font-bold tabular-nums leading-tight">{formatNumber(currentWeek?.equivalentReps ?? 0)}</p>
+        <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{formatNumber(currentWeek?.equivalentReps ?? 0)}</p>
         <p className="text-xs text-muted-foreground mt-1">reps + secunde/2</p>
       </>
     );
@@ -119,7 +121,7 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
   if (id === 'stat-acwr') {
     return (
       <>
-        <p className="text-2xl font-bold tabular-nums leading-tight">{currentWeek?.acwr?.toFixed(2) ?? '-'}</p>
+        <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{currentWeek?.acwr?.toFixed(2) ?? '-'}</p>
         <p className="text-xs text-muted-foreground mt-1">spike peste 1.5</p>
       </>
     );
@@ -127,7 +129,7 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
   if (id === 'stat-pushpull') {
     return (
       <>
-        <p className="text-2xl font-bold tabular-nums leading-tight">{balance?.pushPullRatio?.toFixed(2) ?? '-'}</p>
+        <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{balance?.pushPullRatio?.toFixed(2) ?? '-'}</p>
         <p className="text-xs text-muted-foreground mt-1">{getBalanceText(balance?.status ?? 'insufficient-data')}</p>
       </>
     );
@@ -135,7 +137,7 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
   if (id === 'stat-restdays') {
     return (
       <>
-        <p className="text-2xl font-bold tabular-nums leading-tight text-[#06b6d4]">{restDays}</p>
+        <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight text-[#06b6d4]">{restDays}</p>
         <p className="text-xs text-muted-foreground mt-1">saptamana curenta</p>
       </>
     );
@@ -230,8 +232,8 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
 
   if (id === 'table-zones') {
     return (
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <table className="w-full text-sm min-w-[520px]">
           <thead className="text-xs text-muted-foreground">
             <tr className="border-b border-border">
               <th className="py-2 text-left font-medium">Grupa</th>
@@ -278,12 +280,15 @@ export function WorkoutTablesPage() {
   const [widgets, setWidgets] = useState<string[]>(DEFAULT_WIDGETS);
   const [editMode, setEditMode] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const dragNode = useRef<HTMLDivElement | null>(null);
+
+  const { draggingId, overId, getItemProps, isPressing } = useWidgetReorder({
+    enabled: editMode,
+    ids: widgets,
+    onReorder: setWidgets,
+    onLongPressStart: () => toast.success('Trage widget-ul pentru a-l muta', { duration: 1200 }),
+  });
 
   const availableToAdd = Object.keys(CATALOG).filter((id) => !widgets.includes(id));
-
   const removeWidget = (id: string) => setWidgets((prev) => prev.filter((w) => w !== id));
   const addWidget = (id: string) => setWidgets((prev) => [...prev, id]);
   const moveWidget = (id: string, delta: number) => {
@@ -298,60 +303,26 @@ export function WorkoutTablesPage() {
     });
   };
 
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, id: string) => {
-    setDraggedId(id);
-    e.dataTransfer.effectAllowed = 'move';
-    dragNode.current = e.currentTarget;
-    setTimeout(() => {
-      if (dragNode.current) dragNode.current.style.opacity = '0.4';
-    }, 0);
-  };
-  const handleDragEnd = () => {
-    if (dragNode.current) dragNode.current.style.opacity = '1';
-    dragNode.current = null;
-    setDraggedId(null);
-    setDragOverId(null);
-  };
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, id: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (id !== draggedId) setDragOverId(id);
-  };
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetId: string) => {
-    e.preventDefault();
-    if (!draggedId || draggedId === targetId) return;
-    setWidgets((prev) => {
-      const from = prev.indexOf(draggedId);
-      const to = prev.indexOf(targetId);
-      const next = [...prev];
-      next.splice(from, 1);
-      next.splice(to, 0, draggedId);
-      return next;
-    });
-    setDraggedId(null);
-    setDragOverId(null);
-  };
-
   if (trainingLoad.isLoading) return <LoadingSpinner label="Se incarca..." />;
   const data = trainingLoad.data;
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold leading-tight">Plans &amp; Progress</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
+      {/* Header — stacks on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold leading-tight">Plans &amp; Progress</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
             Planuri + volum real, zone si echilibru.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {editMode && availableToAdd.length > 0 && (
             <button
               type="button"
               onClick={() => setAddOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-dashed border-primary/60 text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
+              className="flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg bg-card border border-dashed border-primary/60 text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               Adauga
@@ -361,7 +332,7 @@ export function WorkoutTablesPage() {
             type="button"
             onClick={() => { setEditMode((v) => !v); setAddOpen(false); }}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+              'flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg text-sm font-medium transition-all',
               editMode
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/40'
@@ -376,8 +347,11 @@ export function WorkoutTablesPage() {
       </div>
 
       {editMode && (
-        <p className="text-xs text-muted-foreground bg-card border border-border rounded-lg px-3 py-2">
-          Trage widget-urile pentru a le reordona · Apasa <strong className="text-foreground">×</strong> pentru a elimina · Apasa <strong className="text-foreground">Adauga</strong> pentru a adauga
+        <p className="text-xs text-muted-foreground bg-card border border-border rounded-lg px-3 py-2 leading-relaxed">
+          <span className="hidden sm:inline">Trage widget-urile pentru a le reordona</span>
+          <span className="sm:hidden">Tine apasat pe widget cateva secunde, apoi trage pentru a-l muta</span>
+          {' · '}
+          <strong className="text-foreground">×</strong> pentru a elimina · <strong className="text-foreground">Adauga</strong> pentru a adauga
         </p>
       )}
 
@@ -387,25 +361,22 @@ export function WorkoutTablesPage() {
           const meta = CATALOG[id];
           if (!meta) return null;
           const isLg = meta.size === 'lg';
-          const isDragOver = dragOverId === id;
-          const isDragging = draggedId === id;
+          const isDragOver = overId === id;
+          const isDragging = draggingId === id;
+          const pressing = isPressing(id);
           const Icon = meta.icon;
+          const dragProps = getItemProps(id);
 
           return (
             <div
               key={id}
-              draggable={editMode}
-              onDragStart={(e) => handleDragStart(e, id)}
-              onDragEnd={handleDragEnd}
-              onDragOver={(e) => handleDragOver(e, id)}
-              onDrop={(e) => handleDrop(e, id)}
-              onDragLeave={() => setDragOverId(null)}
-              role="group"
+              data-widget-id={id}
+              role={editMode ? 'button' : undefined}
               aria-roledescription={editMode ? 'Widget mutabil cu sageti sus/jos' : undefined}
               aria-label={meta.title}
-              tabIndex={editMode ? 0 : -1}
-              onKeyDown={(e) => {
-                if (!editMode) return;
+              tabIndex={editMode ? 0 : undefined}
+              onPointerDown={dragProps.onPointerDown}
+              onKeyDown={editMode ? (e) => {
                 if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
                   e.preventDefault();
                   moveWidget(id, e.key === 'ArrowUp' ? -1 : 1);
@@ -413,33 +384,36 @@ export function WorkoutTablesPage() {
                   e.preventDefault();
                   removeWidget(id);
                 }
-              }}
+              } : undefined}
               className={cn(
-                'bg-card border rounded-xl transition-all duration-150',
+                'bg-card border rounded-xl transition-all duration-150 select-none',
                 isLg && 'sm:col-span-2',
                 editMode
-                  ? 'border-dashed border-border/80 cursor-grab active:cursor-grabbing focus:outline-none focus:ring-2 focus:ring-primary/60'
+                  ? 'border-dashed border-border/80 cursor-grab active:cursor-grabbing touch-pan-y focus:outline-none focus:ring-2 focus:ring-primary/60'
                   : 'border-border',
+                pressing && 'scale-[0.985] border-primary/40 shadow-[0_0_0_3px_rgba(132,255,0,0.18)]',
                 isDragOver && !isDragging && 'border-primary border-solid scale-[1.01] bg-primary/5',
-                isDragging && 'opacity-40',
+                isDragging && 'opacity-40 scale-[0.98]',
               )}
             >
               <div className="flex items-center justify-between px-4 pt-3 pb-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   {editMode && (
                     <GripVertical className="w-4 h-4 text-muted-foreground/50 shrink-0 -ml-1" />
                   )}
                   <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-sm font-medium text-foreground">{meta.title}</span>
+                  <span className="text-sm font-medium text-foreground truncate">{meta.title}</span>
                 </div>
                 {editMode && (
                   <button
                     type="button"
-                    onMouseDown={(e) => e.stopPropagation()}
+                    data-no-drag
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); removeWidget(id); }}
-                    className="w-5 h-5 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors shrink-0"
+                    aria-label={`Elimina ${meta.title}`}
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
@@ -469,64 +443,71 @@ export function WorkoutTablesPage() {
 
       {/* Add widget panel */}
       {addOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <button
-            type="button"
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default"
-            onClick={() => setAddOpen(false)}
-            aria-label="Inchide panel"
-          />
-          <div className="relative z-10 w-full sm:max-w-md bg-card border border-border rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-semibold text-base">Adauga Widget</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Alege ce vrei pe pagina</p>
+        <dialog
+          open
+          className="fixed inset-0 z-50 m-0 max-w-none max-h-none w-screen h-screen bg-transparent p-0"
+          aria-label="Adauga widget"
+        >
+          <div className="absolute inset-0 flex items-end sm:items-center justify-center">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default"
+              onClick={() => setAddOpen(false)}
+              aria-label="Inchide panel"
+            />
+            <div className="relative z-10 w-full sm:max-w-md bg-card border border-border rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold text-base">Adauga Widget</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Alege ce vrei pe pagina</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAddOpen(false)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Inchide"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => setAddOpen(false)}
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="space-y-2 max-h-72 overflow-y-auto scrollbar-hide">
-              {availableToAdd.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">
-                  Toate widget-urile sunt deja adaugate.
-                </p>
-              ) : (
-                availableToAdd.map((id) => {
-                  const meta = CATALOG[id];
-                  const Icon = meta.icon;
-                  return (
-                    <button
-                      type="button"
-                      key={id}
-                      onClick={() => {
-                        addWidget(id);
-                        if (availableToAdd.length === 1) setAddOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-primary/10 hover:border-primary/40 border border-transparent transition-all text-left group"
-                    >
-                      <div className="p-2 bg-muted rounded-lg shrink-0 group-hover:bg-primary/20 transition-colors">
-                        <Icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{meta.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{meta.description}</p>
-                      </div>
-                      <div className="w-5 h-5 rounded-full border border-border flex items-center justify-center shrink-0 group-hover:border-primary group-hover:bg-primary transition-all">
-                        <Plus className="w-3 h-3 text-muted-foreground group-hover:text-primary-foreground transition-colors" />
-                      </div>
-                    </button>
-                  );
-                })
-              )}
+              <div className="space-y-2 max-h-72 overflow-y-auto scrollbar-hide -mx-1 px-1">
+                {availableToAdd.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">
+                    Toate widget-urile sunt deja adaugate.
+                  </p>
+                ) : (
+                  availableToAdd.map((id) => {
+                    const meta = CATALOG[id];
+                    const Icon = meta.icon;
+                    return (
+                      <button
+                        type="button"
+                        key={id}
+                        onClick={() => {
+                          addWidget(id);
+                          if (availableToAdd.length === 1) setAddOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-primary/10 hover:border-primary/40 border border-transparent transition-all text-left group min-h-[60px]"
+                      >
+                        <div className="p-2 bg-muted rounded-lg shrink-0 group-hover:bg-primary/20 transition-colors">
+                          <Icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{meta.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">{meta.description}</p>
+                        </div>
+                        <div className="w-6 h-6 rounded-full border border-border flex items-center justify-center shrink-0 group-hover:border-primary group-hover:bg-primary transition-all">
+                          <Plus className="w-3 h-3 text-muted-foreground group-hover:text-primary-foreground transition-colors" />
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </dialog>
       )}
     </div>
   );

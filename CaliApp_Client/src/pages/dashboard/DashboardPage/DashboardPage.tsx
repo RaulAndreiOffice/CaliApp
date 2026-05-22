@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   Activity, Zap, Target, TrendingUp, GripVertical,
@@ -15,9 +15,8 @@ import { useAuthStore } from '../../../stores/auth.store';
 import { useOverview, useTrainingLoadDashboard } from '../../../hooks/api/useStats';
 import { useLogRestDay } from '../../../hooks/api/useWorkoutSessions';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner/LoadingSpinner';
+import { useWidgetReorder } from '../../../hooks/useWidgetReorder';
 import type { TrainingLoadDashboard } from '../../../types/stats.types';
-
-// ─── data ───────────────────────────────────────────────────────────────────
 
 // ─── widget catalog ──────────────────────────────────────────────────────────
 
@@ -57,15 +56,13 @@ const STAT_COLORS: Record<string, string> = {
 
 // ─── widget content ──────────────────────────────────────────────────────────
 
-function WidgetContent({
-  id,
-  overview,
-  trainingLoad,
-}: {
+interface WidgetContentProps {
   id: string;
   overview: ReturnType<typeof useOverview>['data'];
   trainingLoad?: TrainingLoadDashboard;
-}) {
+}
+
+function WidgetContent({ id, overview, trainingLoad }: Readonly<WidgetContentProps>) {
   const currentWeek = trainingLoad?.weeklyTrend.at(-1);
   const dailyData = trainingLoad?.dailyVolume ?? [];
   const weeklySessionGoal = 3;
@@ -81,7 +78,6 @@ function WidgetContent({
     'stat-consistency': `${consistency}%`,
   };
 
-  // stat card
   if (id.startsWith('stat-')) {
     const Icon = CATALOG[id].icon;
     const colorClass = STAT_COLORS[id];
@@ -90,9 +86,9 @@ function WidgetContent({
         <div className={cn('p-2.5 rounded-lg shrink-0', colorClass)}>
           <Icon className="w-5 h-5" />
         </div>
-        <div>
-          <p className="text-xs text-muted-foreground">{CATALOG[id].title}</p>
-          <p className="text-2xl font-bold tabular-nums leading-tight">{statValues[id]}</p>
+        <div className="min-w-0">
+          <p className="text-xs text-muted-foreground truncate">{CATALOG[id].title}</p>
+          <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{statValues[id]}</p>
         </div>
       </div>
     );
@@ -150,7 +146,7 @@ function WidgetContent({
         {sessions.slice(0, 3).map((session) => (
           <div
             key={session.id}
-            className="flex items-center justify-between p-2.5 bg-muted/30 rounded-lg"
+            className="flex items-center justify-between p-2.5 bg-muted/30 rounded-lg gap-2"
           >
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">{session.workoutTableName}</p>
@@ -160,7 +156,7 @@ function WidgetContent({
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Badge variant="success" className="text-xs">completat</Badge>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-xs text-muted-foreground tabular-nums">
                 {Math.round(session.completionRate)}%
               </span>
             </div>
@@ -183,9 +179,13 @@ export function DashboardPage() {
   const [widgets, setWidgets] = useState<string[]>(DEFAULT_WIDGETS);
   const [editMode, setEditMode] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const dragNode = useRef<HTMLDivElement | null>(null);
+
+  const { draggingId, overId, getItemProps, isPressing } = useWidgetReorder({
+    enabled: editMode,
+    ids: widgets,
+    onReorder: setWidgets,
+    onLongPressStart: () => toast.success('Trage widget-ul pentru a-l muta', { duration: 1200 }),
+  });
 
   const handleRestDay = () => {
     logRestDay.mutate(
@@ -202,70 +202,40 @@ export function DashboardPage() {
   };
 
   const availableToAdd = Object.keys(CATALOG).filter((id) => !widgets.includes(id));
-
-  const removeWidget = (id: string) => {
-    setWidgets((prev) => prev.filter((w) => w !== id));
-  };
-
-  const addWidget = (id: string) => {
-    setWidgets((prev) => [...prev, id]);
-  };
-
-  const handleDragStart = (e: React.DragEvent<HTMLDivElement>, id: string) => {
-    setDraggedId(id);
-    e.dataTransfer.effectAllowed = 'move';
-    dragNode.current = e.currentTarget;
-    setTimeout(() => {
-      if (dragNode.current) dragNode.current.style.opacity = '0.4';
-    }, 0);
-  };
-
-  const handleDragEnd = () => {
-    if (dragNode.current) dragNode.current.style.opacity = '1';
-    dragNode.current = null;
-    setDraggedId(null);
-    setDragOverId(null);
-  };
-
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>, id: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    if (id !== draggedId) setDragOverId(id);
-  };
-
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>, targetId: string) => {
-    e.preventDefault();
-    if (!draggedId || draggedId === targetId) return;
+  const removeWidget = (id: string) => setWidgets((prev) => prev.filter((w) => w !== id));
+  const addWidget = (id: string) => setWidgets((prev) => [...prev, id]);
+  const moveWidget = (id: string, delta: number) => {
     setWidgets((prev) => {
-      const from = prev.indexOf(draggedId);
-      const to = prev.indexOf(targetId);
+      const from = prev.indexOf(id);
+      const to = Math.max(0, Math.min(prev.length - 1, from + delta));
+      if (from === to) return prev;
       const next = [...prev];
       next.splice(from, 1);
-      next.splice(to, 0, draggedId);
+      next.splice(to, 0, id);
       return next;
     });
-    setDraggedId(null);
-    setDragOverId(null);
   };
 
   if (isLoading || trainingLoad.isLoading) return <LoadingSpinner label="Se incarca..." />;
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold leading-tight">Buna, <span className="serif-accent">{user?.username ?? 'atlet'}</span> 👋</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Progresul tau saptamanal</p>
+      {/* Header — stacks on mobile, side-by-side on sm+ */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold leading-tight truncate">
+            Buna, <span className="serif-accent">{user?.username ?? 'atlet'}</span> 👋
+          </h1>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Progresul tau saptamanal</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {!editMode && (
             <button
               type="button"
               onClick={handleRestDay}
               disabled={logRestDay.isPending}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-border text-muted-foreground text-sm font-medium hover:text-foreground hover:border-[#06b6d4]/60 hover:bg-[#06b6d4]/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg bg-card border border-border text-muted-foreground text-sm font-medium hover:text-foreground hover:border-[#06b6d4]/60 hover:bg-[#06b6d4]/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               title="Marcheaza ziua de azi ca rest day"
             >
               <Moon className="w-3.5 h-3.5" />
@@ -274,20 +244,19 @@ export function DashboardPage() {
           )}
           {editMode && availableToAdd.length > 0 && (
             <button
+              type="button"
               onClick={() => setAddOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-card border border-dashed border-primary/60 text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
+              className="flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg bg-card border border-dashed border-primary/60 text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
               Adauga
             </button>
           )}
           <button
-            onClick={() => {
-              setEditMode((v) => !v);
-              setAddOpen(false);
-            }}
+            type="button"
+            onClick={() => { setEditMode((v) => !v); setAddOpen(false); }}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+              'flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg text-sm font-medium transition-all',
               editMode
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/40'
@@ -302,10 +271,13 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Edit mode hint */}
+      {/* Edit mode hint — explicit mobile instructions */}
       {editMode && (
-        <p className="text-xs text-muted-foreground bg-card border border-border rounded-lg px-3 py-2">
-          Trage widget-urile pentru a le reordona · Apasa <strong className="text-foreground">×</strong> pentru a le elimina · Apasa <strong className="text-foreground">Adauga</strong> pentru a adauga altele
+        <p className="text-xs text-muted-foreground bg-card border border-border rounded-lg px-3 py-2 leading-relaxed">
+          <span className="hidden sm:inline">Trage widget-urile pentru a le reordona</span>
+          <span className="sm:hidden">Tine apasat pe widget cateva secunde, apoi trage pentru a-l muta</span>
+          {' · '}
+          <strong className="text-foreground">×</strong> pentru a elimina · <strong className="text-foreground">Adauga</strong> pentru a adauga
         </p>
       )}
 
@@ -315,48 +287,61 @@ export function DashboardPage() {
           const meta = CATALOG[id];
           if (!meta) return null;
           const isLg = meta.size === 'lg';
-          const isDragOver = dragOverId === id;
-          const isDragging = draggedId === id;
+          const isDragOver = overId === id;
+          const isDragging = draggingId === id;
+          const pressing = isPressing(id);
+          const dragProps = getItemProps(id);
 
           return (
             <div
               key={id}
-              draggable={editMode}
-              onDragStart={(e) => handleDragStart(e, id)}
-              onDragEnd={handleDragEnd}
-              onDragOver={(e) => handleDragOver(e, id)}
-              onDrop={(e) => handleDrop(e, id)}
-              onDragLeave={() => setDragOverId(null)}
+              data-widget-id={id}
+              role={editMode ? 'button' : undefined}
+              aria-roledescription={editMode ? 'Widget mutabil cu sageti sus/jos' : undefined}
+              aria-label={meta.title}
+              tabIndex={editMode ? 0 : undefined}
+              onPointerDown={dragProps.onPointerDown}
+              onKeyDown={editMode ? (e) => {
+                if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  moveWidget(id, e.key === 'ArrowUp' ? -1 : 1);
+                } else if (e.key === 'Delete' || e.key === 'Backspace') {
+                  e.preventDefault();
+                  removeWidget(id);
+                }
+              } : undefined}
               className={cn(
-                'bg-card border rounded-2xl hairline transition-colors duration-[var(--d-fast,160ms)]',
+                'bg-card border rounded-2xl hairline transition-all duration-150 select-none',
                 isLg && 'sm:col-span-2',
                 editMode
-                  ? 'border-dashed border-border/60 cursor-grab active:cursor-grabbing hover:border-primary/30'
+                  ? 'border-dashed border-border/60 cursor-grab active:cursor-grabbing touch-pan-y hover:border-primary/30 focus:outline-none focus:ring-2 focus:ring-primary/60'
                   : 'border-border hover:border-primary/30',
+                pressing && 'scale-[0.985] border-primary/40 shadow-[0_0_0_3px_rgba(132,255,0,0.18)]',
                 isDragOver && !isDragging && 'border-primary/60 border-solid bg-primary/5',
-                isDragging && 'opacity-30',
+                isDragging && 'opacity-40 scale-[0.98]',
               )}
             >
-              {/* Card header */}
               <div className="flex items-center justify-between px-4 pt-3 pb-2">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 min-w-0">
                   {editMode && (
                     <GripVertical className="w-4 h-4 text-muted-foreground/50 shrink-0 -ml-1" />
                   )}
-                  <span className="text-sm font-medium text-foreground">{meta.title}</span>
+                  <span className="text-sm font-medium text-foreground truncate">{meta.title}</span>
                 </div>
                 {editMode && (
                   <button
-                    onMouseDown={(e) => e.stopPropagation()}
+                    type="button"
+                    data-no-drag
+                    onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); removeWidget(id); }}
-                    className="w-5 h-5 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors"
+                    className="w-7 h-7 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors shrink-0"
+                    aria-label={`Elimina ${meta.title}`}
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
 
-              {/* Card content */}
               <div className="px-4 pb-4">
                 <WidgetContent
                   id={id}
@@ -368,12 +353,12 @@ export function DashboardPage() {
           );
         })}
 
-        {/* Empty state */}
         {widgets.length === 0 && (
           <div className="sm:col-span-2 flex flex-col items-center justify-center py-16 text-center gap-3">
             <LayoutDashboard className="w-10 h-10 text-muted-foreground/30" />
             <p className="text-muted-foreground text-sm">Dashboard-ul este gol.</p>
             <button
+              type="button"
               onClick={() => setAddOpen(true)}
               className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
             >
@@ -384,62 +369,73 @@ export function DashboardPage() {
         )}
       </div>
 
-      {/* Add widget panel */}
+      {/* Add widget bottom-sheet / modal */}
       {addOpen && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/60"
-            onClick={() => setAddOpen(false)}
-          />
-          <div className="relative z-10 w-full sm:max-w-md glass rounded-t-3xl sm:rounded-2xl p-5 shadow-xl scale-in">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="font-semibold text-base">Adauga Widget</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Alege ce vrei sa adaugi pe dashboard</p>
+        <dialog
+          open
+          className="fixed inset-0 z-50 m-0 max-w-none max-h-none w-screen h-screen bg-transparent p-0"
+          aria-label="Adauga widget"
+        >
+          <div className="absolute inset-0 flex items-end sm:items-center justify-center">
+            <button
+              type="button"
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default"
+              onClick={() => setAddOpen(false)}
+              aria-label="Inchide panel"
+            />
+            <div className="relative z-10 w-full sm:max-w-md glass rounded-t-3xl sm:rounded-2xl p-5 shadow-xl scale-in pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="font-semibold text-base">Adauga Widget</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Alege ce vrei sa adaugi pe dashboard</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAddOpen(false)}
+                  className="w-9 h-9 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="Inchide"
+                >
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                onClick={() => setAddOpen(false)}
-                className="w-7 h-7 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="space-y-2 max-h-72 overflow-y-auto scrollbar-hide">
-              {availableToAdd.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-6">
-                  Toate widget-urile sunt deja adaugate.
-                </p>
-              ) : (
-                availableToAdd.map((id) => {
-                  const meta = CATALOG[id];
-                  const Icon = meta.icon;
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => {
-                        addWidget(id);
-                        if (availableToAdd.length === 1) setAddOpen(false);
-                      }}
-                      className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-primary/10 hover:border-primary/40 border border-transparent transition-all text-left group"
-                    >
-                      <div className="p-2 bg-muted rounded-lg shrink-0 group-hover:bg-primary/20 transition-colors">
-                        <Icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium">{meta.title}</p>
-                        <p className="text-xs text-muted-foreground truncate">{meta.description}</p>
-                      </div>
-                      <div className="w-5 h-5 rounded-full border border-border flex items-center justify-center shrink-0 group-hover:border-primary group-hover:bg-primary transition-all">
-                        <Plus className="w-3 h-3 text-muted-foreground group-hover:text-primary-foreground transition-colors" />
-                      </div>
-                    </button>
-                  );
-                })
-              )}
+              <div className="space-y-2 max-h-72 overflow-y-auto scrollbar-hide -mx-1 px-1">
+                {availableToAdd.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">
+                    Toate widget-urile sunt deja adaugate.
+                  </p>
+                ) : (
+                  availableToAdd.map((id) => {
+                    const meta = CATALOG[id];
+                    const Icon = meta.icon;
+                    return (
+                      <button
+                        type="button"
+                        key={id}
+                        onClick={() => {
+                          addWidget(id);
+                          if (availableToAdd.length === 1) setAddOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl bg-muted/30 hover:bg-primary/10 hover:border-primary/40 border border-transparent transition-all text-left group min-h-[60px]"
+                      >
+                        <div className="p-2 bg-muted rounded-lg shrink-0 group-hover:bg-primary/20 transition-colors">
+                          <Icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium">{meta.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">{meta.description}</p>
+                        </div>
+                        <div className="w-6 h-6 rounded-full border border-border flex items-center justify-center shrink-0 group-hover:border-primary group-hover:bg-primary transition-all">
+                          <Plus className="w-3 h-3 text-muted-foreground group-hover:text-primary-foreground transition-colors" />
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        </dialog>
       )}
     </div>
   );
