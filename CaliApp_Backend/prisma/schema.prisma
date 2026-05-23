@@ -57,7 +57,7 @@ model WorkoutTable {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @default(now()) @updatedAt @map("updated_at")
 
-  owner           User                @relation(fields: [ownerUserId], references: [id])
+  owner           User                @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
   rows            WorkoutTableRow[]
   workoutSessions WorkoutSession[]
   shares          WorkoutTableShare[]
@@ -97,7 +97,7 @@ model WorkoutSession {
   notes          String?
   createdAt      DateTime  @default(now()) @map("created_at")
 
-  user         User                @relation(fields: [userId], references: [id])
+  user         User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   workoutTable WorkoutTable?       @relation(fields: [workoutTableId], references: [id])
   rows         WorkoutSessionRow[]
 
@@ -167,8 +167,8 @@ model WorkoutTableShare {
   revokedAt        DateTime? @map("revoked_at")
 
   workoutTable   WorkoutTable @relation(fields: [workoutTableId], references: [id], onDelete: Cascade)
-  sharedByUser   User         @relation("SharesSent", fields: [sharedByUserId], references: [id])
-  sharedWithUser User         @relation("SharesReceived", fields: [sharedWithUserId], references: [id])
+  sharedByUser   User         @relation("SharesSent", fields: [sharedByUserId], references: [id], onDelete: Cascade)
+  sharedWithUser User         @relation("SharesReceived", fields: [sharedWithUserId], references: [id], onDelete: Cascade)
 
   @@unique([workoutTableId, sharedWithUserId])
   @@index([sharedWithUserId])
