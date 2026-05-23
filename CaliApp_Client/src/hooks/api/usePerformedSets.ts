@@ -43,3 +43,30 @@ export function useDeleteSet(sessionId: string, rowId: string) {
     onSuccess: () => invalidatePerformedSetQueries(qc, sessionId),
   });
 }
+
+interface UpsertPerformedSetArgs {
+  rowId: string;
+  setNumber: number;
+  actualValue: number;
+  existingSetId?: string;
+}
+
+// Single mutation that creates or updates a performed set based on whether one
+// already exists for the given setNumber. Used by surfaces (e.g. PlansBoard)
+// that need to write across any row of the active session without binding the
+// hook to a specific (rowId, setId) pair at construction time.
+export function useUpsertPerformedSet(sessionId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ rowId, setNumber, actualValue, existingSetId }: UpsertPerformedSetArgs) => {
+      if (!sessionId) throw new Error('No active session');
+      if (existingSetId) {
+        return performedSetApi.update(sessionId, rowId, existingSetId, { actualValue });
+      }
+      return performedSetApi.create(sessionId, rowId, { setNumber, actualValue });
+    },
+    onSuccess: () => {
+      if (sessionId) invalidatePerformedSetQueries(qc, sessionId);
+    },
+  });
+}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Play, Check, Timer, Plus, RotateCcw, Flag, Pencil,
+  Play, Check, Timer, Plus, RotateCcw, Pencil,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '../../../utils/cn';
@@ -16,11 +16,13 @@ import {
   useWorkoutTables,
 } from '../../../hooks/api/useWorkoutTables';
 import { useStartSession, useWorkoutSession } from '../../../hooks/api/useWorkoutSessions';
+import { useUpsertPerformedSet } from '../../../hooks/api/usePerformedSets';
 import { useElapsedSeconds, useWorkoutStore } from '../../../stores/workout.store';
 import type { WorkoutTable, WorkoutTableRow } from '../../../types/workoutTable.types';
+import type { WorkoutSessionRow } from '../../../types/workoutSession.types';
 
 type SetValue = number | null;
-type EditingCell = { exerciseId: string; setIndex: number } | null;
+type EditingCell = { rowId: string; setIndex: number } | null;
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60);
@@ -36,9 +38,7 @@ export function PlansBoard() {
 
   const activeSessionId = useWorkoutStore((s) => s.activeSessionId);
   const activeTableId = useWorkoutStore((s) => s.activeTableId);
-  const performedSets = useWorkoutStore((s) => s.performedSets);
   const startWorkoutInStore = useWorkoutStore((s) => s.startSession);
-  const setPerformedValue = useWorkoutStore((s) => s.setPerformedValue);
   const endWorkoutInStore = useWorkoutStore((s) => s.endSession);
   const elapsed = useElapsedSeconds();
 
@@ -57,6 +57,19 @@ export function PlansBoard() {
   }, [staleActiveSession, endWorkoutInStore]);
 
   const isActive = !!activeSessionId && !staleActiveSession;
+  const upsertSet = useUpsertPerformedSet(isActive ? activeSessionId : null);
+
+  // Map the active session's rows by their planning row id so we can resolve
+  // each table row to the server-side WorkoutSessionRow (with its performed
+  // sets) without relying on exerciseId, which may repeat in a plan.
+  const sessionRowByTableRowId = useMemo(() => {
+    const map = new Map<string, WorkoutSessionRow>();
+    if (!isActive) return map;
+    for (const r of activeSession?.rows ?? []) {
+      if (r.workoutTableRowId) map.set(r.workoutTableRowId, r);
+    }
+    return map;
+  }, [isActive, activeSession]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedIdLocal, setSelectedIdLocal] = useState<string>('');
@@ -119,35 +132,41 @@ export function PlansBoard() {
     );
   };
 
-  const getSetValue = (exerciseId: string, setIndex: number): SetValue =>
-    performedSets[exerciseId]?.[setIndex] ?? null;
+  const getSetValue = (tableRowId: string, setIndex: number): SetValue => {
+    const sessionRow = sessionRowByTableRowId.get(tableRowId);
+    const set = sessionRow?.performedSets?.find((s) => s.setNumber === setIndex + 1);
+    return set?.actualValue ?? null;
+  };
 
-  const commitSet = (exerciseId: string, setIndex: number, raw: string) => {
+  const commitSet = (tableRowId: string, setIndex: number, raw: string) => {
     const num = Number.parseInt(raw, 10);
-    if (!Number.isNaN(num) && num >= 0) {
-      setPerformedValue(exerciseId, setIndex, num);
-    }
     setEditingCell(null);
     setInputValue('');
+    if (Number.isNaN(num) || num < 0) return;
+    const sessionRow = sessionRowByTableRowId.get(tableRowId);
+    if (!sessionRow) {
+      toast.error('Sesiunea inca se incarca, mai incearca');
+      return;
+    }
+    const existing = sessionRow.performedSets?.find((s) => s.setNumber === setIndex + 1);
+    if (existing && existing.actualValue === num) return;
+    upsertSet.mutate(
+      {
+        rowId: sessionRow.id,
+        setNumber: setIndex + 1,
+        actualValue: num,
+        existingSetId: existing?.id,
+      },
+      { onError: () => toast.error('Nu am putut salva seria') },
+    );
   };
 
   const totalSets = sortedRows.reduce((s, r) => s + r.plannedSets, 0);
   const completedSets = sortedRows.reduce((s, r) => {
-    const done = (performedSets[r.exerciseId] ?? []).filter(
-      (v) => v !== null && v !== undefined,
-    ).length;
-    return s + done;
+    const sessionRow = sessionRowByTableRowId.get(r.id);
+    return s + (sessionRow?.performedSets?.length ?? 0);
   }, 0);
   const progress = totalSets > 0 ? completedSets / totalSets : 0;
-  const allDone = totalSets > 0 && completedSets >= totalSets;
-
-  const finishWorkout = () => {
-    toast.success(
-      `Done! ${formatTime(elapsed)} · ${completedSets}/${totalSets} sets`,
-    );
-    endWorkoutInStore();
-    navigate('/workout');
-  };
 
   if (isLoading) return <LoadingSpinner label="Se incarca planurile..." />;
 
@@ -288,19 +307,6 @@ export function PlansBoard() {
                       <Play className="w-3.5 h-3.5 fill-current" />
                       Continua
                     </button>
-                    <button
-                      type="button"
-                      onClick={finishWorkout}
-                      className={cn(
-                        'flex items-center gap-1.5 px-3 min-h-[36px] rounded-lg text-xs font-medium transition-all',
-                        allDone
-                          ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                          : 'bg-muted text-muted-foreground',
-                      )}
-                    >
-                      <Flag className="w-3.5 h-3.5" />
-                      Finish
-                    </button>
                   </div>
                 )}
               </div>
@@ -327,9 +333,8 @@ export function PlansBoard() {
               {sortedRows.map((row) => {
                 const exercise = row.exercise;
                 if (!exercise) return null;
-                const doneCount = (performedSets[exercise.id] ?? []).filter(
-                  (v) => v !== null && v !== undefined,
-                ).length;
+                const sessionRow = sessionRowByTableRowId.get(row.id);
+                const doneCount = sessionRow?.performedSets?.length ?? 0;
                 const isExDone = doneCount >= row.plannedSets;
                 const isTime = exercise.measurementType === 'time';
                 const unit = isTime ? 's' : '';
@@ -372,10 +377,10 @@ export function PlansBoard() {
 
                     <div className="flex flex-wrap gap-1.5">
                       {Array.from({ length: row.plannedSets }, (_, i) => i).map((setIndex) => {
-                        const val = getSetValue(exercise.id, setIndex);
+                        const val = getSetValue(row.id, setIndex);
                         const isDone = val !== null && val !== undefined;
                         const isEditing =
-                          editingCell?.exerciseId === exercise.id &&
+                          editingCell?.rowId === row.id &&
                           editingCell?.setIndex === setIndex;
 
                         return (
@@ -392,10 +397,10 @@ export function PlansBoard() {
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter') commitSet(exercise.id, setIndex, inputValue);
+                                  if (e.key === 'Enter') commitSet(row.id, setIndex, inputValue);
                                   if (e.key === 'Escape') { setEditingCell(null); setInputValue(''); }
                                 }}
-                                onBlur={() => commitSet(exercise.id, setIndex, inputValue)}
+                                onBlur={() => commitSet(row.id, setIndex, inputValue)}
                                 placeholder={String(row.plannedTargetValue)}
                                 className="w-14 h-11 sm:w-12 sm:h-9 text-center bg-primary/10 border border-primary rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
                               />
@@ -404,7 +409,7 @@ export function PlansBoard() {
                                 type="button"
                                 onClick={() => {
                                   if (!isActive) return;
-                                  setEditingCell({ exerciseId: exercise.id, setIndex });
+                                  setEditingCell({ rowId: row.id, setIndex });
                                   setInputValue(isDone ? String(val) : '');
                                 }}
                                 disabled={!isActive}
