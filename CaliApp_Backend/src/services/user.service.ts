@@ -1,4 +1,5 @@
 import { userRepository } from "../repositories/user.repository";
+import { refreshTokenRepository } from "../repositories/refreshToken.repository";
 import { hashPassword, comparePassword } from "../utils/hashPassword";
 import { AppError } from "../utils/apiError";
 import type { ChangePasswordDTO, UpdateUserDTO } from "../dtos/user/update-user.dto";
@@ -39,5 +40,6 @@ export const userService = {
 
     const passwordHash = await hashPassword(newPassword);
     await userRepository.update(userId, { passwordHash });
+    await refreshTokenRepository.revokeAllForUser(userId);
   },
 };

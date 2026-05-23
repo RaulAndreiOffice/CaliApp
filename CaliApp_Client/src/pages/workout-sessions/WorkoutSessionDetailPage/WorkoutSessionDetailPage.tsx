@@ -383,7 +383,7 @@ interface PerformedSetCellProps {
   isEditing: boolean;
   inputValue: string;
   setInputValue: (v: string) => void;
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
   startEdit: () => void;
   endEdit: () => void;
 }
