@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Play, Check, Timer, Plus, RotateCcw, Flag, Pencil,
@@ -15,7 +15,7 @@ import {
   useWorkoutTable,
   useWorkoutTables,
 } from '../../../hooks/api/useWorkoutTables';
-import { useStartSession } from '../../../hooks/api/useWorkoutSessions';
+import { useStartSession, useWorkoutSession } from '../../../hooks/api/useWorkoutSessions';
 import { useElapsedSeconds, useWorkoutStore } from '../../../stores/workout.store';
 import type { WorkoutTable, WorkoutTableRow } from '../../../types/workoutTable.types';
 
@@ -41,7 +41,22 @@ export function PlansBoard() {
   const setPerformedValue = useWorkoutStore((s) => s.setPerformedValue);
   const endWorkoutInStore = useWorkoutStore((s) => s.endSession);
   const elapsed = useElapsedSeconds();
-  const isActive = !!activeSessionId;
+
+  // Verify the persisted active session is still valid server-side. If it was
+  // deleted, completed, or cancelled (e.g. from another device), drop the
+  // stale local state so the UI unlocks editing/deleting/starting plans.
+  const { data: activeSession, isError: activeSessionError } = useWorkoutSession(
+    activeSessionId ?? undefined,
+  );
+  const staleActiveSession = Boolean(
+    activeSessionId &&
+      (activeSessionError || (activeSession && activeSession.status !== 'started')),
+  );
+  useEffect(() => {
+    if (staleActiveSession) endWorkoutInStore();
+  }, [staleActiveSession, endWorkoutInStore]);
+
+  const isActive = !!activeSessionId && !staleActiveSession;
 
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedIdLocal, setSelectedIdLocal] = useState<string>('');
@@ -52,8 +67,20 @@ export function PlansBoard() {
   // While a workout is active, force the selected tab to the active table.
   const selectedId = isActive && activeTableId ? activeTableId : selectedIdLocal;
 
-  const activeSelectedId = selectedId || tables?.[0]?.id || '';
-  const selectedPlanSummary: WorkoutTable | undefined = tables?.find(
+  // Sort plans so the active workout's plan is always first in the tab bar.
+  const sortedTables = useMemo(() => {
+    if (!tables) return tables;
+    if (!isActive || !activeTableId) return tables;
+    const idx = tables.findIndex((t) => t.id === activeTableId);
+    if (idx <= 0) return tables;
+    const next = [...tables];
+    const [active] = next.splice(idx, 1);
+    next.unshift(active);
+    return next;
+  }, [tables, isActive, activeTableId]);
+
+  const activeSelectedId = selectedId || sortedTables?.[0]?.id || '';
+  const selectedPlanSummary: WorkoutTable | undefined = sortedTables?.find(
     (t) => t.id === activeSelectedId,
   );
   const { data: selectedPlanDetail, isLoading: isSelectedPlanLoading } =
@@ -159,9 +186,9 @@ export function PlansBoard() {
 
   return (
     <div className="space-y-3">
-      {/* Plan tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide pb-0.5">
-        {tables.map((plan) => (
+      {/* Plan tabs — horizontal scroll, larger touch targets */}
+      <div className="-mx-1 px-1 flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+        {(sortedTables ?? tables).map((plan) => (
           <button
             key={plan.id}
             type="button"
@@ -175,7 +202,7 @@ export function PlansBoard() {
               setInputValue('');
             }}
             className={cn(
-              'px-3.5 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-all',
+              'px-3.5 min-h-[36px] rounded-lg text-sm font-medium whitespace-nowrap transition-all touch-manipulation',
               activeSelectedId === plan.id
                 ? 'bg-primary text-primary-foreground'
                 : 'bg-card border border-border text-muted-foreground hover:text-foreground hover:border-primary/40',
@@ -190,7 +217,7 @@ export function PlansBoard() {
         <button
           type="button"
           onClick={() => setCreateOpen(true)}
-          className="px-3.5 py-1.5 rounded-lg text-sm font-medium bg-card border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all flex items-center gap-1.5 whitespace-nowrap"
+          className="px-3.5 min-h-[36px] rounded-lg text-sm font-medium bg-card border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all flex items-center gap-1.5 whitespace-nowrap touch-manipulation"
         >
           <Plus className="w-3.5 h-3.5" />
           New
@@ -199,17 +226,17 @@ export function PlansBoard() {
 
       {selectedPlan && (
         <>
-          {/* Header */}
+          {/* Header — stacks on small screens */}
           <div className="bg-muted/30 border border-border rounded-lg overflow-hidden">
-            <div className="flex items-center justify-between px-3 py-2.5">
-              <div>
-                <h2 className="font-semibold text-sm leading-tight">{selectedPlan.name}</h2>
+            <div className="flex flex-col gap-2 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <h2 className="font-semibold text-sm leading-tight truncate">{selectedPlan.name}</h2>
                 {selectedPlan.description && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{selectedPlan.description}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{selectedPlan.description}</p>
                 )}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap justify-end">
                 {isActive && (
                   <div className="flex items-center gap-1.5 font-mono text-sm text-primary tabular-nums">
                     <Timer className="w-3.5 h-3.5" />
@@ -226,18 +253,19 @@ export function PlansBoard() {
                     <button
                       type="button"
                       onClick={() => navigate(`/workout-tables/${selectedPlan.id}/edit`)}
-                      className="p-1.5 rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors"
                       title="Edit"
+                      aria-label="Edit plan"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
+                      <Pencil className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
                       onClick={startWorkout}
                       disabled={startSessionMutation.isPending}
-                      className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
+                      className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 min-h-[36px] rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                     >
-                      <Play className="w-3 h-3 fill-current" />
+                      <Play className="w-3.5 h-3.5 fill-current" />
                       Start
                     </button>
                   </div>
@@ -246,22 +274,31 @@ export function PlansBoard() {
                     <button
                       type="button"
                       onClick={reset}
-                      className="p-1.5 rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors"
                       title="Reset"
+                      aria-label="Reset"
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/workout')}
+                      className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 min-h-[36px] rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      Continua
                     </button>
                     <button
                       type="button"
                       onClick={finishWorkout}
                       className={cn(
-                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all',
+                        'flex items-center gap-1.5 px-3 min-h-[36px] rounded-lg text-xs font-medium transition-all',
                         allDone
                           ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                           : 'bg-muted text-muted-foreground',
                       )}
                     >
-                      <Flag className="w-3 h-3" />
+                      <Flag className="w-3.5 h-3.5" />
                       Finish
                     </button>
                   </div>
@@ -350,6 +387,7 @@ export function PlansBoard() {
                               <input
                                 ref={inputRef}
                                 type="number"
+                                inputMode="numeric"
                                 min={0}
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
@@ -359,7 +397,7 @@ export function PlansBoard() {
                                 }}
                                 onBlur={() => commitSet(exercise.id, setIndex, inputValue)}
                                 placeholder={String(row.plannedTargetValue)}
-                                className="w-12 h-8 text-center bg-primary/10 border border-primary rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                                className="w-14 h-11 sm:w-12 sm:h-9 text-center bg-primary/10 border border-primary rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
                               />
                             ) : (
                               <button
@@ -372,7 +410,7 @@ export function PlansBoard() {
                                 disabled={!isActive}
                                 title={isActive ? `Enter set ${setIndex + 1}` : 'Start workout first'}
                                 className={cn(
-                                  'w-12 h-8 rounded-md text-sm font-mono transition-all',
+                                  'w-14 h-11 sm:w-12 sm:h-9 rounded-md text-sm font-mono transition-all touch-manipulation',
                                   isDone
                                     ? 'bg-primary/20 text-primary border border-primary/50 font-semibold'
                                     : isActive

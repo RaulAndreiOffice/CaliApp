@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Square, Check } from 'lucide-react';
@@ -17,11 +18,20 @@ export function ActiveWorkoutPage() {
   const navigate = useNavigate();
   const activeId = useWorkoutStore((s) => s.activeSessionId);
   const endSession = useWorkoutStore((s) => s.endSession);
-  const { data: session, isLoading } = useWorkoutSession(activeId ?? undefined);
+  const { data: session, isLoading, isError } = useWorkoutSession(activeId ?? undefined);
   const completeMutation = useCompleteSession();
   const cancelMutation = useCancelSession();
 
-  if (!activeId) {
+  // Auto-recover from stale state: if the persisted session no longer exists on
+  // the server, or was already completed/cancelled elsewhere, clear it so the
+  // app stops thinking a workout is in progress.
+  const staleStatus = session?.status && session.status !== 'started';
+  useEffect(() => {
+    if (!activeId) return;
+    if (isError || staleStatus) endSession();
+  }, [activeId, isError, staleStatus, endSession]);
+
+  if (!activeId || isError || staleStatus) {
     return (
       <EmptyState
         title="Niciun antrenament activ"
@@ -62,10 +72,10 @@ export function ActiveWorkoutPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <h1 className="text-2xl sm:text-3xl font-bold">
+        <h1 className="text-xl sm:text-3xl font-bold truncate min-w-0">
           {session.workoutTableName ?? 'Antrenament'}
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <SessionTimer />
           <Button
             variant="secondary"
