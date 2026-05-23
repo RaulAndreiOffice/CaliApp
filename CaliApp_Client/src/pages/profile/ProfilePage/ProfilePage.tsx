@@ -134,8 +134,9 @@ export function ProfilePage() {
               <h3 className="font-medium text-lg">Preferințe Antrenament</h3>
 
               <div>
-                <label className="text-sm mb-2 block">Nivel Fitness</label>
+                <label htmlFor="pref-fitness-level" className="text-sm mb-2 block">Nivel Fitness</label>
                 <select
+                  id="pref-fitness-level"
                   className={selectClasses}
                   value={fitnessLevel}
                   onChange={(e) => setFitnessLevel(e.target.value)}
@@ -147,10 +148,11 @@ export function ProfilePage() {
               </div>
 
               <div>
-                <label className="text-sm mb-2 block">
+                <label htmlFor="pref-training-days" className="text-sm mb-2 block">
                   Zile de Antrenament pe Săptămână
                 </label>
                 <select
+                  id="pref-training-days"
                   className={selectClasses}
                   value={trainingDays}
                   onChange={(e) => setTrainingDays(e.target.value)}
@@ -163,10 +165,11 @@ export function ProfilePage() {
               </div>
 
               <div>
-                <label className="text-sm mb-2 block">
+                <label htmlFor="pref-max-duration" className="text-sm mb-2 block">
                   Durata Maximă Sesiune (minute)
                 </label>
                 <input
+                  id="pref-max-duration"
                   type="number"
                   value={maxDuration}
                   onChange={(e) => setMaxDuration(Number(e.target.value))}
@@ -199,8 +202,9 @@ export function ProfilePage() {
 
               {/* Setare Limba */}
               <div>
-                <label className="text-sm mb-2 block">Limba Interfeței</label>
+                <label htmlFor="pref-language" className="text-sm mb-2 block">Limba Interfeței</label>
                 <select
+                  id="pref-language"
                   className={selectClasses}
                   value={language}
                   onChange={(e) => setLanguage(e.target.value as 'ro' | 'en')}

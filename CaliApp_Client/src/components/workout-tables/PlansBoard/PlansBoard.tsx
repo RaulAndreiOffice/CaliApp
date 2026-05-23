@@ -149,7 +149,7 @@ export function PlansBoard() {
       return;
     }
     const existing = sessionRow.performedSets?.find((s) => s.setNumber === setIndex + 1);
-    if (existing && existing.actualValue === num) return;
+    if (existing?.actualValue === num) return;
     upsertSet.mutate(
       {
         rowId: sessionRow.id,
@@ -267,7 +267,27 @@ export function PlansBoard() {
                     {completedSets}/{totalSets}
                   </span>
                 )}
-                {!isActive ? (
+                {isActive ? (
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={reset}
+                      className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      title="Reset"
+                      aria-label="Reset"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => navigate('/workout')}
+                      className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 min-h-[36px] rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      Continua
+                    </button>
+                  </div>
+                ) : (
                   <div className="flex items-center gap-1.5">
                     <button
                       type="button"
@@ -286,26 +306,6 @@ export function PlansBoard() {
                     >
                       <Play className="w-3.5 h-3.5 fill-current" />
                       Start
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={reset}
-                      className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                      title="Reset"
-                      aria-label="Reset"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/workout')}
-                      className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 min-h-[36px] rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      Continua
                     </button>
                   </div>
                 )}
@@ -382,6 +382,10 @@ export function PlansBoard() {
                         const isEditing =
                           editingCell?.rowId === row.id &&
                           editingCell?.setIndex === setIndex;
+                        let cellState: 'done' | 'active' | 'idle';
+                        if (isDone) cellState = 'done';
+                        else if (isActive) cellState = 'active';
+                        else cellState = 'idle';
 
                         return (
                           <div key={setIndex} className="flex flex-col items-center gap-0.5">
@@ -416,11 +420,9 @@ export function PlansBoard() {
                                 title={isActive ? `Enter set ${setIndex + 1}` : 'Start workout first'}
                                 className={cn(
                                   'w-14 h-11 sm:w-12 sm:h-9 rounded-md text-sm font-mono transition-all touch-manipulation',
-                                  isDone
-                                    ? 'bg-primary/20 text-primary border border-primary/50 font-semibold'
-                                    : isActive
-                                      ? 'bg-muted/40 border border-dashed border-border text-muted-foreground hover:border-primary/60 hover:text-foreground cursor-pointer'
-                                      : 'bg-muted/20 border border-border/40 text-muted-foreground/40 cursor-default',
+                                  cellState === 'done' && 'bg-primary/20 text-primary border border-primary/50 font-semibold',
+                                  cellState === 'active' && 'bg-muted/40 border border-dashed border-border text-muted-foreground hover:border-primary/60 hover:text-foreground cursor-pointer',
+                                  cellState === 'idle' && 'bg-muted/20 border border-border/40 text-muted-foreground/40 cursor-default',
                                 )}
                               >
                                 {isDone ? `${val}${unit}` : '—'}
@@ -429,14 +431,14 @@ export function PlansBoard() {
                           </div>
                         );
                       })}
-                      {row.restSeconds && (
+                      {row.restSeconds ? (
                         <div className="flex flex-col items-center gap-0.5 ml-1">
                           <span className="text-[10px] text-muted-foreground/60">rest</span>
                           <div className="h-8 px-2 flex items-center text-xs text-muted-foreground/50 tabular-nums">
                             {row.restSeconds}s
                           </div>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                     {row.notes && (
                       <p className="text-xs text-muted-foreground mt-2 italic">{row.notes}</p>
