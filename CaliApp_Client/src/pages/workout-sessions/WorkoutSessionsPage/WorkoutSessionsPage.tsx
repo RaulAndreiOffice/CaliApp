@@ -15,14 +15,16 @@ import {
   useWorkoutSessions,
 } from '../../../hooks/api/useWorkoutSessions';
 import { useWorkoutStore } from '../../../stores/workout.store';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { formatDate } from '../../../utils/formatters';
+import type { TranslationKey } from '../../../i18n/translations';
 import type { WorkoutSessionStatus } from '../../../types/workoutSession.types';
 
-const STATUS_LABEL: Record<WorkoutSessionStatus, string> = {
-  started: 'inceput',
-  completed: 'completat',
-  cancelled: 'anulat',
-  rest: 'rest day',
+const STATUS_KEY: Record<WorkoutSessionStatus, TranslationKey> = {
+  started: 'sessions.status.started',
+  completed: 'sessions.status.completed',
+  cancelled: 'sessions.status.cancelled',
+  rest: 'sessions.status.rest',
 };
 
 function statusVariant(status: WorkoutSessionStatus): 'success' | 'info' | 'danger' | 'default' {
@@ -41,7 +43,10 @@ export function WorkoutSessionsPage() {
   const deleteSession = useDeleteSession();
   const activeSessionId = useWorkoutStore((s) => s.activeSessionId);
   const endWorkoutInStore = useWorkoutStore((s) => s.endSession);
+  const { t } = useLanguage();
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const totalPages = data ? Math.ceil(data.meta.total / data.meta.limit) : 1;
 
   const confirmDelete = () => {
     if (!pendingDeleteId) return;
@@ -49,38 +54,36 @@ export function WorkoutSessionsPage() {
     deleteSession.mutate(id, {
       onSuccess: () => {
         if (activeSessionId === id) endWorkoutInStore();
-        toast.success('Sesiune stearsa');
+        toast.success(t('sessions.toast.deleted'));
         setPendingDeleteId(null);
       },
-      onError: () => toast.error('Nu am putut sterge sesiunea'),
+      onError: () => toast.error(t('sessions.toast.deleteFailed')),
     });
   };
-
-  const totalPages = data ? Math.ceil(data.meta.total / data.meta.limit) : 1;
 
   const handleRestDay = () => {
     logRestDay.mutate(
       {},
       {
-        onSuccess: () => toast.success('Rest day inregistrat pentru azi'),
+        onSuccess: () => toast.success(t('sessions.toast.restLogged')),
         onError: (err: unknown) => {
           const msg = (err as { response?: { data?: { error?: { message?: string } } } })
             ?.response?.data?.error?.message;
-          toast.error(msg ?? 'Nu am putut inregistra rest day-ul');
+          toast.error(msg ?? t('sessions.toast.restFailed'));
         },
       }
     );
   };
 
-  if (isLoading) return <LoadingSpinner label="Se incarca..." />;
+  if (isLoading) return <LoadingSpinner label={t('common.loading')} />;
 
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Workout History</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold">{t('sessions.title')}</h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            View your past workout sessions
+            {t('sessions.subtitle')}
           </p>
         </div>
         <button
@@ -90,14 +93,14 @@ export function WorkoutSessionsPage() {
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border border-border text-muted-foreground text-sm font-medium hover:text-foreground hover:border-[#06b6d4]/60 hover:bg-[#06b6d4]/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors self-start"
         >
           <Moon className="w-4 h-4" />
-          Marcheaza rest day azi
+          {t('sessions.markRestDay')}
         </button>
       </div>
 
       {!data || data.items.length === 0 ? (
         <EmptyState
-          title="Niciun antrenament inca"
-          description="Antrenamentele tale vor aparea aici."
+          title={t('sessions.empty.title')}
+          description={t('sessions.empty.desc')}
         />
       ) : (
         <>
@@ -132,14 +135,14 @@ export function WorkoutSessionsPage() {
                           {isRest && <Moon className="w-4 h-4 text-[#06b6d4] shrink-0" />}
                           <h3 className="font-medium text-base sm:text-lg truncate">
                             {isRest
-                              ? 'Rest day'
-                              : (session.workoutTableName ?? 'Antrenament liber')}
+                              ? t('sessions.card.restDay')
+                              : (session.workoutTableName ?? t('sessions.card.freeWorkout'))}
                           </h3>
                           <Badge
                             variant={statusVariant(session.status)}
                             className="shrink-0"
                           >
-                            {STATUS_LABEL[session.status] ?? session.status}
+                            {t(STATUS_KEY[session.status])}
                           </Badge>
                         </div>
                         <p className="text-xs sm:text-sm text-muted-foreground">
@@ -155,9 +158,9 @@ export function WorkoutSessionsPage() {
                         {duration !== null && (
                           <div className="text-left sm:text-right">
                             <p className="text-xs sm:text-sm text-muted-foreground">
-                              Duration
+                              {t('sessions.card.duration')}
                             </p>
-                            <p className="font-medium">{duration} min</p>
+                            <p className="font-medium">{duration} {t('common.minutes')}</p>
                           </div>
                         )}
                         <button
@@ -167,8 +170,8 @@ export function WorkoutSessionsPage() {
                             setPendingDeleteId(session.id);
                           }}
                           className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors"
-                          title="Sterge sesiunea"
-                          aria-label="Sterge sesiunea"
+                          title={t('sessions.card.delete.tooltip')}
+                          aria-label={t('sessions.card.delete.tooltip')}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -180,7 +183,7 @@ export function WorkoutSessionsPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                         {rows.map((row) => {
                           const name =
-                            row.exercise?.name ?? row.exerciseName ?? 'Exercise';
+                            row.exercise?.name ?? row.exerciseName ?? t('sessions.card.exercise.fallback');
                           const sets = row.performedSets ?? [];
                           const totalValue = sets.reduce(
                             (acc, s) => acc + s.actualValue,
@@ -189,7 +192,7 @@ export function WorkoutSessionsPage() {
                           const isTime =
                             (row.exercise?.measurementType ??
                               row.measurementTypeSnapshot) === 'time';
-                          const unitLabel = isTime ? 's' : 'reps';
+                          const unitLabel = isTime ? t('common.seconds') : t('common.reps');
 
                           return (
                             <div
@@ -205,14 +208,13 @@ export function WorkoutSessionsPage() {
                                     key={set.id}
                                     className="text-xs text-muted-foreground"
                                   >
-                                    Set {set.setNumber}: {set.actualValue}{' '}
-                                    {unitLabel}
+                                    {t('sessions.card.set')} {set.setNumber}: {set.actualValue} {unitLabel}
                                   </p>
                                 ))}
                               </div>
                               {sets.length > 0 && (
                                 <p className="text-xs text-primary mt-1.5 font-medium">
-                                  Total: {totalValue} {unitLabel}
+                                  {t('sessions.card.total')}: {totalValue} {unitLabel}
                                 </p>
                               )}
                             </div>
@@ -224,7 +226,7 @@ export function WorkoutSessionsPage() {
                     {/* Footer */}
                     {!isRest && (
                       <div className="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground pt-2 border-t border-border">
-                        <span>Total sets: {totalSets}</span>
+                        <span>{t('sessions.card.totalSets')}: {totalSets}</span>
                       </div>
                     )}
                   </div>
@@ -242,7 +244,7 @@ export function WorkoutSessionsPage() {
 
       <Dialog
         open={!!pendingDeleteId}
-        title="Sterge sesiunea?"
+        title={t('sessions.confirmDelete.title')}
         onClose={() => (deleteSession.isPending ? undefined : setPendingDeleteId(null))}
         footer={
           <>
@@ -252,7 +254,7 @@ export function WorkoutSessionsPage() {
               onClick={() => setPendingDeleteId(null)}
               disabled={deleteSession.isPending}
             >
-              Anuleaza
+              {t('common.cancel')}
             </Button>
             <Button
               variant="danger"
@@ -260,13 +262,13 @@ export function WorkoutSessionsPage() {
               onClick={confirmDelete}
               loading={deleteSession.isPending}
             >
-              Sterge
+              {t('common.delete')}
             </Button>
           </>
         }
       >
         <p className="text-sm text-muted-foreground">
-          Aceasta actiune este permanenta. Setarile, exercitiile si seriile efectuate vor fi sterse.
+          {t('sessions.confirmDelete.desc')}
         </p>
       </Dialog>
     </div>

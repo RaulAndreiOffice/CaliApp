@@ -15,6 +15,8 @@ import { LoadingSpinner } from '../../../components/common/LoadingSpinner/Loadin
 import { PlansBoard } from '../../../components/workout-tables/PlansBoard/PlansBoard';
 import { useTrainingLoadDashboard } from '../../../hooks/api/useStats';
 import { useWidgetReorder } from '../../../hooks/useWidgetReorder';
+import { useLanguage } from '../../../contexts/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations';
 import type {
   TrainingLoadDashboard,
   TrainingLoadZone,
@@ -31,12 +33,12 @@ const tooltipStyle = {
   fontSize: '12px',
 };
 
-const zoneLabel: Record<TrainingLoadZone, string> = {
-  'below-mv': 'Sub MV',
-  maintenance: 'Mentenanta',
-  mev: 'MEV',
-  mav: 'MAV',
-  'mrv-risk': 'Risc MRV',
+const zoneLabelKey: Record<TrainingLoadZone, TranslationKey> = {
+  'below-mv': 'widget.zone.belowMv',
+  maintenance: 'widget.zone.maintenance',
+  mev: 'widget.zone.mev',
+  mav: 'widget.zone.mav',
+  'mrv-risk': 'widget.zone.mrvRisk',
 };
 
 const zoneClass: Record<TrainingLoadZone, string> = {
@@ -53,38 +55,38 @@ const recommendationClass: Record<TrainingRecommendation['severity'], string> = 
   danger: 'border-red-500/50 bg-red-500/10',
 };
 
-function formatNumber(value: number) {
-  return new Intl.NumberFormat('ro-RO', { maximumFractionDigits: 0 }).format(value);
+function formatNumber(value: number, locale: string) {
+  return new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value);
 }
 
-function getBalanceText(status: string) {
-  if (status === 'balanced') return 'Echilibrat';
-  if (status === 'push-heavy') return 'Push prea mult';
-  if (status === 'pull-heavy') return 'Pull dominant';
-  return 'Date putine';
+function balanceKey(status: string): TranslationKey {
+  if (status === 'balanced') return 'widget.balance.balanced';
+  if (status === 'push-heavy') return 'widget.balance.pushHeavy';
+  if (status === 'pull-heavy') return 'widget.balance.pullHeavy';
+  return 'widget.balance.insufficient';
 }
 
 type WidgetSize = 'sm' | 'lg';
 
 interface WidgetMeta {
-  title: string;
-  description: string;
+  titleKey: TranslationKey;
+  descKey: TranslationKey;
   size: WidgetSize;
   icon: React.ElementType;
 }
 
 const CATALOG: Record<string, WidgetMeta> = {
-  'plans-board':        { title: 'Plans',                  description: 'Planuri de antrenament si pornire sesiune', size: 'lg', icon: ClipboardList },
-  'stat-hardsets':      { title: 'Serii grele',            description: 'Proxy din seturi completate',               size: 'sm', icon: Activity },
-  'stat-volume':        { title: 'Volum echiv.',           description: 'Reps + secunde/2',                           size: 'sm', icon: Layers },
-  'stat-acwr':          { title: 'ACWR',                   description: 'Spike peste 1.5',                            size: 'sm', icon: TrendingUp },
-  'stat-pushpull':      { title: 'Push/Pull',              description: 'Echilibru push vs pull',                     size: 'sm', icon: Activity },
-  'stat-restdays':      { title: 'Rest days',              description: 'Zile de odihna saptamana curenta',           size: 'sm', icon: Moon },
-  'chart-weekly-trend': { title: 'Weekly Hard Sets Trend', description: 'Volum saptamanal cu zone MV/MEV/MRV',        size: 'lg', icon: TrendingUp },
-  'chart-daily-volume': { title: 'Volum pe zile',          description: 'Distributie zilnica saptamana curenta',      size: 'lg', icon: BarChart3 },
-  'chart-distribution': { title: 'Distributie exercitii', description: 'Pondere serii pe exercitii (+ rest)',        size: 'lg', icon: PieChartIcon },
-  'recommendations':    { title: 'Recomandari',            description: 'Sugestii pe baza zonelor si ACWR',           size: 'lg', icon: Lightbulb },
-  'table-zones':        { title: 'Zone de volum pe grupe', description: 'Push/Pull/Legs/Core defalcate',              size: 'lg', icon: TableIcon },
+  'plans-board':        { titleKey: 'widget.plans.title',          descKey: 'widget.plans.desc',          size: 'lg', icon: ClipboardList },
+  'stat-hardsets':      { titleKey: 'widget.hardSets.title',       descKey: 'widget.hardSets.desc',       size: 'sm', icon: Activity },
+  'stat-volume':        { titleKey: 'widget.volume.title',         descKey: 'widget.volume.desc',         size: 'sm', icon: Layers },
+  'stat-acwr':          { titleKey: 'widget.acwr.title',           descKey: 'widget.acwr.desc',           size: 'sm', icon: TrendingUp },
+  'stat-pushpull':      { titleKey: 'widget.pushpull.title',       descKey: 'widget.pushpull.desc',       size: 'sm', icon: Activity },
+  'stat-restdays':      { titleKey: 'widget.restDays.title',       descKey: 'widget.restDays.desc',       size: 'sm', icon: Moon },
+  'chart-weekly-trend': { titleKey: 'widget.weeklyTrend.title',    descKey: 'widget.weeklyTrend.desc',    size: 'lg', icon: TrendingUp },
+  'chart-daily-volume': { titleKey: 'widget.dailyVolume.title',    descKey: 'widget.dailyVolume.desc',    size: 'lg', icon: BarChart3 },
+  'chart-distribution': { titleKey: 'widget.distribution.title',   descKey: 'widget.distribution.desc',   size: 'lg', icon: PieChartIcon },
+  'recommendations':    { titleKey: 'widget.recommendations.title', descKey: 'widget.recommendations.desc', size: 'lg', icon: Lightbulb },
+  'table-zones':        { titleKey: 'widget.zones.title',          descKey: 'widget.zones.desc',          size: 'lg', icon: TableIcon },
 };
 
 const DEFAULT_WIDGETS = [
@@ -95,12 +97,19 @@ const DEFAULT_WIDGETS = [
   'table-zones',
 ];
 
-function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDashboard | undefined }>) {
+interface WidgetContentProps {
+  id: string;
+  data: TrainingLoadDashboard | undefined;
+  t: ReturnType<typeof useLanguage>['t'];
+}
+
+function WidgetContent({ id, data, t }: Readonly<WidgetContentProps>) {
   if (id === 'plans-board') return <PlansBoard />;
 
   const currentWeek = data?.weeklyTrend.at(-1);
   const balance = data?.pushPullBalance;
   const restDays = data?.restDaysThisWeek ?? 0;
+  const locale = t('common.locale.date');
 
   if (id === 'stat-hardsets') {
     return (
@@ -109,10 +118,10 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
           <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight text-primary">{currentWeek?.hardSets ?? 0}</p>
           <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
           <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] font-normal text-foreground z-50 pointer-events-none">
-            Seturi grele, duse aproape de epuizare.
+            {t('widget.hardSets.hint')}
           </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">proxy din seturi completate</p>
+        <p className="text-xs text-muted-foreground mt-1">{t('widget.hardSets.desc')}</p>
       </>
     );
   }
@@ -120,13 +129,13 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
     return (
       <>
         <div className="flex items-center gap-1.5 group relative w-fit mb-1">
-          <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{formatNumber(currentWeek?.equivalentReps ?? 0)}</p>
+          <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{formatNumber(currentWeek?.equivalentReps ?? 0, locale)}</p>
           <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
           <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-56 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] font-normal text-foreground z-50 pointer-events-none">
-            Echivalează exercițiile între ele: 1 repetare = 1 punct, 1 sec. de izometrie = 0.5 puncte.
+            {t('widget.volume.hint')}
           </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">reps + secunde/2</p>
+        <p className="text-xs text-muted-foreground mt-1">{t('widget.volume.desc')}</p>
       </>
     );
   }
@@ -137,10 +146,10 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
           <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{currentWeek?.acwr?.toFixed(2) ?? '-'}</p>
           <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
           <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-64 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] font-normal text-foreground z-50 pointer-events-none">
-            Acute:Chronic Workload Ratio. Compara volumul saptamanii curente cu media ultimelor 4 saptamani. Un spike (&gt; 1.5) creste riscul de accidentare.
+            {t('widget.acwr.hint')}
           </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">spike peste 1.5</p>
+        <p className="text-xs text-muted-foreground mt-1">{t('widget.acwr.desc')}</p>
       </>
     );
   }
@@ -151,10 +160,10 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
           <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{balance?.pushPullRatio?.toFixed(2) ?? '-'}</p>
           <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
           <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] font-normal text-foreground z-50 pointer-events-none">
-            Ideal aproape de 1:1. Multe seturi de împins (Push) fără tras (Pull) pot provoca dezechilibre musculare.
+            {t('widget.pushpull.hint')}
           </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">{getBalanceText(balance?.status ?? 'insufficient-data')}</p>
+        <p className="text-xs text-muted-foreground mt-1">{t(balanceKey(balance?.status ?? 'insufficient-data'))}</p>
       </>
     );
   }
@@ -162,7 +171,7 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
     return (
       <>
         <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight text-[#06b6d4]">{restDays}</p>
-        <p className="text-xs text-muted-foreground mt-1">saptamana curenta</p>
+        <p className="text-xs text-muted-foreground mt-1">{t('widget.restDays.unit')}</p>
       </>
     );
   }
@@ -184,8 +193,8 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
               <ReferenceLine y={data.landmarks.mrv} stroke="#ef4444" strokeDasharray="4 4" label="MRV" />
             </>
           )}
-          <Line type="monotone" dataKey="hardSets" name="Serii grele" stroke="#84ff00" strokeWidth={2} dot={{ r: 4 }} />
-          <Line type="monotone" dataKey="acwr" name="ACWR" stroke="#f97316" strokeWidth={2} />
+          <Line type="monotone" dataKey="hardSets" name={t('widget.chart.weekly.hardSets')} stroke="#84ff00" strokeWidth={2} dot={{ r: 4 }} />
+          <Line type="monotone" dataKey="acwr" name={t('widget.chart.weekly.acwr')} stroke="#f97316" strokeWidth={2} />
         </LineChart>
       </ResponsiveContainer>
     );
@@ -199,17 +208,18 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
           <XAxis dataKey="label" stroke="#a3a3a3" style={{ fontSize: '12px' }} />
           <YAxis stroke="#a3a3a3" style={{ fontSize: '12px' }} />
           <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: '#f5f5f5' }} />
-          <Bar dataKey="hardSets" name="Serii grele" fill="#84ff00" />
+          <Bar dataKey="hardSets" name={t('widget.chart.weekly.hardSets')} fill="#84ff00" />
         </BarChart>
       </ResponsiveContainer>
     );
   }
 
   if (id === 'chart-distribution') {
+    const restLabel = t('widget.distribution.rest');
     const baseDistribution = [
       ...(data?.exerciseDistribution ?? []),
       ...(restDays > 0
-        ? [{ exerciseId: '__rest', name: 'Rest', category: 'rest', hardSets: restDays, equivalentReps: 0 }]
+        ? [{ exerciseId: '__rest', name: restLabel, category: 'rest', hardSets: restDays, equivalentReps: 0 }]
         : []),
     ];
     const distributionData = baseDistribution.map((entry, index) => ({
@@ -260,12 +270,12 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
         <table className="w-full text-sm min-w-[520px]">
           <thead className="text-xs text-muted-foreground">
             <tr className="border-b border-border">
-              <th className="py-2 text-left font-medium">Grupa</th>
-              <th className="py-2 text-right font-medium">Serii</th>
-              <th className="py-2 text-right font-medium">Reps</th>
-              <th className="py-2 text-right font-medium">Timp</th>
-              <th className="py-2 text-right font-medium">Volum echiv.</th>
-              <th className="py-2 text-right font-medium">Zona</th>
+              <th className="py-2 text-left font-medium">{t('widget.zones.col.group')}</th>
+              <th className="py-2 text-right font-medium">{t('widget.zones.col.sets')}</th>
+              <th className="py-2 text-right font-medium">{t('widget.zones.col.reps')}</th>
+              <th className="py-2 text-right font-medium">{t('widget.zones.col.time')}</th>
+              <th className="py-2 text-right font-medium">{t('widget.zones.col.volume')}</th>
+              <th className="py-2 text-right font-medium">{t('widget.zones.col.zone')}</th>
             </tr>
           </thead>
           <tbody>
@@ -273,12 +283,12 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
               <tr key={item.category} className="border-b border-border/60">
                 <td className="py-3 capitalize">{item.category}</td>
                 <td className="py-3 text-right">{item.hardSets}</td>
-                <td className="py-3 text-right">{formatNumber(item.totalReps)}</td>
-                <td className="py-3 text-right">{formatNumber(item.totalTimeSeconds)}s</td>
-                <td className="py-3 text-right">{formatNumber(item.equivalentReps)}</td>
+                <td className="py-3 text-right">{formatNumber(item.totalReps, locale)}</td>
+                <td className="py-3 text-right">{formatNumber(item.totalTimeSeconds, locale)}{t('common.seconds')}</td>
+                <td className="py-3 text-right">{formatNumber(item.equivalentReps, locale)}</td>
                 <td className="py-3 text-right">
                   <span className={`inline-flex rounded-full border px-2 py-1 text-xs ${zoneClass[item.zone]}`}>
-                    {zoneLabel[item.zone]}
+                    {t(zoneLabelKey[item.zone])}
                   </span>
                 </td>
               </tr>
@@ -286,7 +296,7 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
             {data?.currentWeekByCategory.length === 0 && (
               <tr>
                 <td className="py-6 text-center text-muted-foreground" colSpan={6}>
-                  Nu exista antrenamente completate in saptamana curenta.
+                  {t('widget.zones.empty')}
                 </td>
               </tr>
             )}
@@ -301,6 +311,7 @@ function WidgetContent({ id, data }: Readonly<{ id: string; data: TrainingLoadDa
 
 export function WorkoutTablesPage() {
   const trainingLoad = useTrainingLoadDashboard(6);
+  const { t } = useLanguage();
   const [widgets, setWidgets] = useState<string[]>(DEFAULT_WIDGETS);
   const [editMode, setEditMode] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -309,7 +320,7 @@ export function WorkoutTablesPage() {
     enabled: editMode,
     ids: widgets,
     onReorder: setWidgets,
-    onLongPressStart: () => toast.success('Trage widget-ul pentru a-l muta', { duration: 1200 }),
+    onLongPressStart: () => toast.success(t('widget.editMode.dragHint'), { duration: 1200 }),
   });
 
   const availableToAdd = Object.keys(CATALOG).filter((id) => !widgets.includes(id));
@@ -327,17 +338,17 @@ export function WorkoutTablesPage() {
     });
   };
 
-  if (trainingLoad.isLoading) return <LoadingSpinner label="Se incarca..." />;
+  if (trainingLoad.isLoading) return <LoadingSpinner label={t('common.loading')} />;
   const data = trainingLoad.data;
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Header — stacks on mobile */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-xl sm:text-2xl font-bold leading-tight">Plans &amp; Progress</h1>
+          <h1 className="text-xl sm:text-2xl font-bold leading-tight">{t('plans.title')}</h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-            Planuri + volum real, zone si echilibru.
+            {t('plans.subtitle')}
           </p>
         </div>
 
@@ -349,7 +360,7 @@ export function WorkoutTablesPage() {
               className="flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg bg-card border border-dashed border-primary/60 text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              Adauga
+              {t('widget.editMode.add')}
             </button>
           )}
           <button
@@ -363,8 +374,8 @@ export function WorkoutTablesPage() {
             )}
           >
             {editMode
-              ? (<><Check className="w-3.5 h-3.5" /> Gata</>)
-              : (<><LayoutDashboard className="w-3.5 h-3.5" /> Editeaza</>)
+              ? (<><Check className="w-3.5 h-3.5" /> {t('widget.editMode.toggle.on')}</>)
+              : (<><LayoutDashboard className="w-3.5 h-3.5" /> {t('widget.editMode.toggle.off')}</>)
             }
           </button>
         </div>
@@ -372,10 +383,10 @@ export function WorkoutTablesPage() {
 
       {editMode && (
         <p className="text-xs text-muted-foreground bg-card border border-border rounded-lg px-3 py-2 leading-relaxed">
-          <span className="hidden sm:inline">Trage widget-urile pentru a le reordona</span>
-          <span className="sm:hidden">Tine apasat pe widget, apoi trage. Apasa Gata ca sa revii la scroll normal</span>
+          <span className="hidden sm:inline">{t('widget.editMode.tipDesktop')}</span>
+          <span className="sm:hidden">{t('widget.editMode.tipMobile')}</span>
           {' · '}
-          <strong className="text-foreground">×</strong> pentru a elimina · <strong className="text-foreground">Adauga</strong> pentru a adauga
+          {t('widget.editMode.tipMore')}
         </p>
       )}
 
@@ -390,14 +401,15 @@ export function WorkoutTablesPage() {
           const pressing = isPressing(id);
           const Icon = meta.icon;
           const dragProps = getItemProps(id);
+          const title = t(meta.titleKey);
 
           return (
             <div
               key={id}
               data-widget-id={id}
               role={editMode ? 'button' : undefined}
-              aria-roledescription={editMode ? 'Widget mutabil cu sageti sus/jos' : undefined}
-              aria-label={meta.title}
+              aria-roledescription={editMode ? t('dashboard.widget.aria.movable') : undefined}
+              aria-label={title}
               tabIndex={editMode ? 0 : undefined}
               onPointerDown={dragProps.onPointerDown}
               onKeyDown={editMode ? (e) => {
@@ -426,7 +438,7 @@ export function WorkoutTablesPage() {
                     <GripVertical className="w-4 h-4 text-muted-foreground/50 shrink-0 -ml-1" />
                   )}
                   <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-sm font-medium text-foreground truncate">{meta.title}</span>
+                  <span className="text-sm font-medium text-foreground truncate">{title}</span>
                 </div>
                 {editMode && (
                   <button
@@ -435,7 +447,7 @@ export function WorkoutTablesPage() {
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); removeWidget(id); }}
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors shrink-0"
-                    aria-label={`Elimina ${meta.title}`}
+                    aria-label={t('dashboard.widget.aria.remove', { title })}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -443,7 +455,7 @@ export function WorkoutTablesPage() {
               </div>
 
               <div className="px-4 pb-4">
-                <WidgetContent id={id} data={data} />
+                <WidgetContent id={id} data={data} t={t} />
               </div>
             </div>
           );
@@ -452,14 +464,14 @@ export function WorkoutTablesPage() {
         {widgets.length === 0 && (
           <div className="sm:col-span-2 flex flex-col items-center justify-center py-16 text-center gap-3">
             <LayoutDashboard className="w-10 h-10 text-muted-foreground/30" />
-            <p className="text-muted-foreground text-sm">Pagina e goala.</p>
+            <p className="text-muted-foreground text-sm">{t('widget.empty.title')}</p>
             <button
               type="button"
               onClick={() => setAddOpen(true)}
               className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Adauga primul widget
+              {t('widget.empty.add')}
             </button>
           </div>
         )}
@@ -470,26 +482,26 @@ export function WorkoutTablesPage() {
         <dialog
           open
           className="fixed inset-0 z-50 m-0 max-w-none max-h-none w-screen h-screen bg-transparent p-0"
-          aria-label="Adauga widget"
+          aria-label={t('widget.add.title')}
         >
           <div className="absolute inset-0 flex items-end sm:items-center justify-center">
             <button
               type="button"
               className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default"
               onClick={() => setAddOpen(false)}
-              aria-label="Inchide panel"
+              aria-label={t('dashboard.add.closePanel')}
             />
             <div className="relative z-10 w-full sm:max-w-md bg-card border border-border rounded-t-2xl sm:rounded-2xl p-5 shadow-2xl pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="font-semibold text-base">Adauga Widget</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Alege ce vrei pe pagina</p>
+                  <h3 className="font-semibold text-base">{t('widget.add.title')}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t('widget.add.subtitle')}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setAddOpen(false)}
                   className="w-9 h-9 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Inchide"
+                  aria-label={t('common.close')}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -498,7 +510,7 @@ export function WorkoutTablesPage() {
               <div className="space-y-2 max-h-72 overflow-y-auto scrollbar-hide -mx-1 px-1">
                 {availableToAdd.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">
-                    Toate widget-urile sunt deja adaugate.
+                    {t('widget.add.allAdded')}
                   </p>
                 ) : (
                   availableToAdd.map((id) => {
@@ -518,8 +530,8 @@ export function WorkoutTablesPage() {
                           <Icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">{meta.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">{meta.description}</p>
+                          <p className="text-sm font-medium">{t(meta.titleKey)}</p>
+                          <p className="text-xs text-muted-foreground truncate">{t(meta.descKey)}</p>
                         </div>
                         <div className="w-6 h-6 rounded-full border border-border flex items-center justify-center shrink-0 group-hover:border-primary group-hover:bg-primary transition-all">
                           <Plus className="w-3 h-3 text-muted-foreground group-hover:text-primary-foreground transition-colors" />

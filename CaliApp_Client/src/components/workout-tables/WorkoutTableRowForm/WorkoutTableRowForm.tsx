@@ -8,6 +8,7 @@ import {
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
 import { ExercisePicker } from '../../exercises/ExercisePicker/ExercisePicker';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import type { Exercise } from '../../../types/exercise.types';
 
 interface WorkoutTableRowFormProps {
@@ -21,6 +22,7 @@ export function WorkoutTableRowForm({
   onCancel,
   loading,
 }: WorkoutTableRowFormProps) {
+  const { t } = useLanguage();
   const [selected, setSelected] = useState<Exercise | null>(null);
 
   const {
@@ -43,29 +45,31 @@ export function WorkoutTableRowForm({
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
       <div className="flex flex-col gap-1">
-        <label className="text-sm font-medium">Exercitiu</label>
-        <ExercisePicker selectedId={selected?.id} onSelect={handleSelect} />
+        <label className="text-sm font-medium" htmlFor="row-exercise-picker">{t('plans.row.form.exercise')}</label>
+        <div id="row-exercise-picker">
+          <ExercisePicker selectedId={selected?.id} onSelect={handleSelect} />
+        </div>
         {errors.exerciseId?.message && (
           <span className="text-xs text-destructive">{errors.exerciseId.message}</span>
         )}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Input
-          label="Serii"
+          label={t('plans.row.form.sets')}
           type="number"
           min={1}
           error={errors.plannedSets?.message}
           {...register('plannedSets', { valueAsNumber: true })}
         />
         <Input
-          label="Target"
+          label={t('plans.row.form.target')}
           type="number"
           min={1}
           error={errors.plannedTargetValue?.message}
           {...register('plannedTargetValue', { valueAsNumber: true })}
         />
         <Input
-          label="Pauza (s)"
+          label={t('plans.row.form.rest')}
           type="number"
           min={0}
           error={errors.restSeconds?.message}
@@ -73,18 +77,18 @@ export function WorkoutTableRowForm({
         />
       </div>
       <Input
-        label="Note (optional)"
+        label={t('plans.row.form.notesOptional')}
         error={errors.notes?.message}
         {...register('notes')}
       />
       <div className="flex justify-end gap-2">
         {onCancel && (
           <Button type="button" variant="secondary" onClick={onCancel}>
-            Anuleaza
+            {t('common.cancel')}
           </Button>
         )}
         <Button type="submit" loading={loading}>
-          Adauga in plan
+          {t('plans.detail.row.addToPlan')}
         </Button>
       </div>
     </form>

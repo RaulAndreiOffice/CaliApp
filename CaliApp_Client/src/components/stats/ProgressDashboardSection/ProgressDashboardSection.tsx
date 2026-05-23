@@ -25,6 +25,8 @@ import {
 } from '../../ui/Card';
 import { LoadingSpinner } from '../../common/LoadingSpinner/LoadingSpinner';
 import { useTrainingLoadDashboard } from '../../../hooks/api/useStats';
+import { useLanguage } from '../../../contexts/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations';
 import type {
   TrainingLoadZone,
   TrainingRecommendation,
@@ -41,12 +43,12 @@ const tooltipStyle = {
   fontSize: '12px',
 };
 
-const zoneLabel: Record<TrainingLoadZone, string> = {
-  'below-mv': 'Sub MV',
-  maintenance: 'Mentenanta',
-  mev: 'MEV',
-  mav: 'MAV',
-  'mrv-risk': 'Risc MRV',
+const zoneLabelKey: Record<TrainingLoadZone, TranslationKey> = {
+  'below-mv': 'widget.zone.belowMv',
+  maintenance: 'widget.zone.maintenance',
+  mev: 'widget.zone.mev',
+  mav: 'widget.zone.mav',
+  'mrv-risk': 'widget.zone.mrvRisk',
 };
 
 const zoneClass: Record<TrainingLoadZone, string> = {
@@ -63,15 +65,11 @@ const recommendationClass: Record<TrainingRecommendation['severity'], string> = 
   danger: 'border-red-500/30 bg-red-500/8 shadow-[0_0_12px_rgba(239,68,68,0.06)]',
 };
 
-function formatNumber(value: number) {
-  return new Intl.NumberFormat('ro-RO', { maximumFractionDigits: 0 }).format(value);
-}
-
-function getBalanceText(status: string) {
-  if (status === 'balanced') return 'Echilibrat';
-  if (status === 'push-heavy') return 'Push prea mult';
-  if (status === 'pull-heavy') return 'Pull dominant';
-  return 'Date putine';
+function balanceKey(status: string): TranslationKey {
+  if (status === 'balanced') return 'widget.balance.balanced';
+  if (status === 'push-heavy') return 'widget.balance.pushHeavy';
+  if (status === 'pull-heavy') return 'widget.balance.pullHeavy';
+  return 'widget.balance.insufficient';
 }
 
 interface ProgressDashboardSectionProps {
@@ -84,20 +82,26 @@ export function ProgressDashboardSection({
   weeks = 6,
 }: Readonly<ProgressDashboardSectionProps>) {
   const trainingLoad = useTrainingLoadDashboard(weeks);
+  const { t } = useLanguage();
 
   if (trainingLoad.isLoading) {
-    return <LoadingSpinner label="Se incarca statisticile..." />;
+    return <LoadingSpinner label={t('common.loading')} />;
   }
+
+  const locale = t('common.locale.date');
+  const formatNumber = (value: number) =>
+    new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }).format(value);
 
   const data = trainingLoad.data;
   const currentWeek = data?.weeklyTrend.at(-1);
   const balance = data?.pushPullBalance;
   const restDays = data?.restDaysThisWeek ?? 0;
+  const restLabel = t('widget.distribution.rest');
 
   const distributionData = [
     ...(data?.exerciseDistribution ?? []),
     ...(restDays > 0
-      ? [{ exerciseId: '__rest', name: 'Rest', category: 'rest', hardSets: restDays, equivalentReps: 0 }]
+      ? [{ exerciseId: '__rest', name: restLabel, category: 'rest', hardSets: restDays, equivalentReps: 0 }]
       : []),
   ];
 
@@ -105,9 +109,9 @@ export function ProgressDashboardSection({
     <div className="space-y-4 sm:space-y-6">
       {showHeader && (
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold">Progress &amp; Stats</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold">{t('stats.header.title')}</h2>
           <p className="text-sm sm:text-base text-muted-foreground mt-1">
-            Volum real, zone de adaptare si echilibru pentru calistenie.
+            {t('stats.header.subtitle')}
           </p>
         </div>
       )}
@@ -116,62 +120,62 @@ export function ProgressDashboardSection({
         <Card>
           <CardContent className="pt-3 sm:pt-4">
             <div className="flex items-center gap-1.5 group relative w-fit">
-              <p className="text-xs sm:text-sm text-muted-foreground">Serii grele</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">{t('widget.hardSets.title')}</p>
               <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
               <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] text-foreground font-normal z-50 pointer-events-none">
-                Seturi duse aproape de epuizare. Momentan bazat doar pe cele bifate complet.
+                {t('stats.hardSets.hint.short')}
               </div>
             </div>
             <p className="text-xl sm:text-3xl font-bold text-primary">
               {currentWeek?.hardSets ?? 0}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">proxy din seturi completate</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('widget.hardSets.desc')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-3 sm:pt-4">
             <div className="flex items-center gap-1.5 group relative w-fit">
-              <p className="text-xs sm:text-sm text-muted-foreground">Volum echiv.</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">{t('widget.volume.title')}</p>
               <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
               <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-56 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] text-foreground font-normal z-50 pointer-events-none">
-                Formulă: 1 repetare = 1 punct, 1 secundă = 0.5 puncte.
+                {t('stats.volume.hint.short')}
               </div>
             </div>
             <p className="text-xl sm:text-3xl font-bold">
               {formatNumber(currentWeek?.equivalentReps ?? 0)}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">reps + secunde/2</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('widget.volume.desc')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-3 sm:pt-4">
             <div className="flex items-center gap-1.5 group relative w-fit">
-              <p className="text-xs sm:text-sm text-muted-foreground">ACWR</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">{t('widget.acwr.title')}</p>
               <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
               <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-56 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] text-foreground font-normal z-50 pointer-events-none">
-                Acute:Chronic Workload Ratio. Compară volumul actual cu media lunară. &gt;1.5 crește riscul de accidentare.
+                {t('stats.acwr.hint.short')}
               </div>
             </div>
             <p className="text-xl sm:text-3xl font-bold">
               {currentWeek?.acwr?.toFixed(2) ?? '-'}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">spike peste 1.5</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('widget.acwr.desc')}</p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-3 sm:pt-4">
             <div className="flex items-center gap-1.5 group relative w-fit">
-              <p className="text-xs sm:text-sm text-muted-foreground">Push/Pull</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">{t('widget.pushpull.title')}</p>
               <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
               <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] text-foreground font-normal z-50 pointer-events-none">
-                Ideal aproape de 1:1. Un dezechilibru major poate crea probleme articulare.
+                {t('stats.pushpull.hint.short')}
               </div>
             </div>
             <p className="text-xl sm:text-3xl font-bold">
               {balance?.pushPullRatio?.toFixed(2) ?? '-'}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              {getBalanceText(balance?.status ?? 'insufficient-data')}
+              {t(balanceKey(balance?.status ?? 'insufficient-data'))}
             </p>
           </CardContent>
         </Card>
@@ -179,10 +183,10 @@ export function ProgressDashboardSection({
           <CardContent className="pt-3 sm:pt-4">
             <div className="flex items-center gap-1.5">
               <Moon className="w-3.5 h-3.5 text-[#06b6d4]" />
-              <p className="text-xs sm:text-sm text-muted-foreground">Rest days</p>
+              <p className="text-xs sm:text-sm text-muted-foreground">{t('widget.restDays.title')}</p>
             </div>
             <p className="text-xl sm:text-3xl font-bold">{restDays}</p>
-            <p className="text-xs text-muted-foreground mt-1">saptamana curenta</p>
+            <p className="text-xs text-muted-foreground mt-1">{t('widget.restDays.unit')}</p>
           </CardContent>
         </Card>
       </div>
@@ -190,9 +194,7 @@ export function ProgressDashboardSection({
       <div className="grid grid-cols-1 xl:grid-cols-[1.4fr_1fr] gap-4 sm:gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base sm:text-lg">
-              Weekly Hard Sets Trend
-            </CardTitle>
+            <CardTitle className="text-base sm:text-lg">{t('stats.weeklyTrendCard')}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
@@ -218,7 +220,7 @@ export function ProgressDashboardSection({
                 <Line
                   type="monotone"
                   dataKey="hardSets"
-                  name="Serii grele"
+                  name={t('widget.chart.weekly.hardSets')}
                   stroke="#84ff00"
                   strokeWidth={2}
                   dot={{ r: 4 }}
@@ -226,7 +228,7 @@ export function ProgressDashboardSection({
                 <Line
                   type="monotone"
                   dataKey="acwr"
-                  name="ACWR"
+                  name={t('widget.chart.weekly.acwr')}
                   stroke="#f97316"
                   strokeWidth={2}
                   yAxisId={0}
@@ -238,9 +240,7 @@ export function ProgressDashboardSection({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base sm:text-lg">
-              Recomandari
-            </CardTitle>
+            <CardTitle className="text-base sm:text-lg">{t('stats.recommendations')}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -261,9 +261,7 @@ export function ProgressDashboardSection({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base sm:text-lg">
-              Volum pe zile
-            </CardTitle>
+            <CardTitle className="text-base sm:text-lg">{t('stats.dailyVolumeCard')}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
@@ -272,7 +270,7 @@ export function ProgressDashboardSection({
                 <XAxis dataKey="label" stroke="#a3a3a3" style={{ fontSize: '12px' }} />
                 <YAxis stroke="#a3a3a3" style={{ fontSize: '12px' }} />
                 <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: '#f5f5f5' }} />
-                <Bar dataKey="hardSets" name="Serii grele" fill="#84ff00" />
+                <Bar dataKey="hardSets" name={t('widget.chart.weekly.hardSets')} fill="#84ff00" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -280,9 +278,7 @@ export function ProgressDashboardSection({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base sm:text-lg">
-              Distributie exercitii
-            </CardTitle>
+            <CardTitle className="text-base sm:text-lg">{t('stats.distributionCard')}</CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={220}>
@@ -317,21 +313,19 @@ export function ProgressDashboardSection({
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base sm:text-lg">
-            Zone de volum pe grupe
-          </CardTitle>
+          <CardTitle className="text-base sm:text-lg">{t('stats.zonesCard')}</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-xs text-muted-foreground/70">
                 <tr className="border-b border-border/30">
-                  <th className="py-2 text-left font-medium">Grupa</th>
-                  <th className="py-2 text-right font-medium">Serii</th>
-                  <th className="py-2 text-right font-medium">Reps</th>
-                  <th className="py-2 text-right font-medium">Timp</th>
-                  <th className="py-2 text-right font-medium">Volum echiv.</th>
-                  <th className="py-2 text-right font-medium">Zona</th>
+                  <th className="py-2 text-left font-medium">{t('widget.zones.col.group')}</th>
+                  <th className="py-2 text-right font-medium">{t('widget.zones.col.sets')}</th>
+                  <th className="py-2 text-right font-medium">{t('widget.zones.col.reps')}</th>
+                  <th className="py-2 text-right font-medium">{t('widget.zones.col.time')}</th>
+                  <th className="py-2 text-right font-medium">{t('widget.zones.col.volume')}</th>
+                  <th className="py-2 text-right font-medium">{t('widget.zones.col.zone')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -340,11 +334,11 @@ export function ProgressDashboardSection({
                     <td className="py-3 capitalize">{item.category}</td>
                     <td className="py-3 text-right">{item.hardSets}</td>
                     <td className="py-3 text-right">{formatNumber(item.totalReps)}</td>
-                    <td className="py-3 text-right">{formatNumber(item.totalTimeSeconds)}s</td>
+                    <td className="py-3 text-right">{formatNumber(item.totalTimeSeconds)}{t('common.seconds')}</td>
                     <td className="py-3 text-right">{formatNumber(item.equivalentReps)}</td>
                     <td className="py-3 text-right">
                       <span className={`inline-flex rounded-lg border px-2.5 py-1 text-[11px] font-semibold ${zoneClass[item.zone]}`}>
-                        {zoneLabel[item.zone]}
+                        {t(zoneLabelKey[item.zone])}
                       </span>
                     </td>
                   </tr>
@@ -352,7 +346,7 @@ export function ProgressDashboardSection({
                 {data?.currentWeekByCategory.length === 0 && (
                   <tr>
                     <td className="py-6 text-center text-muted-foreground" colSpan={6}>
-                      Nu exista antrenamente completate in saptamana curenta.
+                      {t('widget.zones.empty')}
                     </td>
                   </tr>
                 )}
@@ -363,7 +357,7 @@ export function ProgressDashboardSection({
       </Card>
 
       <p className="text-xs text-muted-foreground">
-        Nota: pana adaugam RIR/RPE pe fiecare set, &quot;serii grele&quot; este un proxy bazat pe seturile completate.
+        {t('stats.note.proxy')}
       </p>
     </div>
   );

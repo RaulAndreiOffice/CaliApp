@@ -1,6 +1,7 @@
 import { useState, type KeyboardEvent } from 'react';
 import { Check } from 'lucide-react';
 import { cn } from '../../../utils/cn';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 interface SetInputProps {
   setNumber: number;
@@ -16,7 +17,8 @@ export function SetInput({
   measurementType,
   completed,
   onSubmit,
-}: SetInputProps) {
+}: Readonly<SetInputProps>) {
+  const { t } = useLanguage();
   const [value, setValue] = useState<string>(
     initialValue !== undefined ? String(initialValue) : ''
   );
@@ -35,6 +37,13 @@ export function SetInput({
     }
   }
 
+  const placeholder = measurementType === 'time'
+    ? t('workout.setInput.unit.time')
+    : t('workout.setInput.unit.reps');
+  const unitShort = measurementType === 'time'
+    ? t('workout.setInput.unitShort.time')
+    : t('workout.setInput.unitShort.reps');
+
   return (
     <div className={cn(
       'flex items-center gap-3 p-3 rounded-xl border transition-colors duration-[var(--d-fast,160ms)]',
@@ -42,7 +51,7 @@ export function SetInput({
         ? 'border-[#22c55e]/40 bg-[#22c55e]/5'
         : 'border-border bg-muted/20 hover:bg-muted/30'
     )}>
-      <span className="text-sm font-semibold min-w-[55px] text-muted-foreground font-mono">Set {setNumber}</span>
+      <span className="text-sm font-semibold min-w-[55px] text-muted-foreground font-mono">{t('sessions.card.set')} {setNumber}</span>
       <input
         type="number"
         inputMode="numeric"
@@ -52,10 +61,11 @@ export function SetInput({
         onBlur={commit}
         onKeyDown={onKey}
         min={0}
-        placeholder={measurementType === 'time' ? 'sec' : 'reps'}
+        placeholder={placeholder}
+        aria-label={`${t('sessions.card.set')} ${setNumber}`}
       />
       <span className="text-xs text-muted-foreground/60 font-medium">
-        {measurementType === 'time' ? 's' : 'reps'}
+        {unitShort}
       </span>
       <span className={cn(
         'inline-flex items-center justify-center w-7 h-7 rounded-full transition-all duration-[var(--d-base,240ms)]',

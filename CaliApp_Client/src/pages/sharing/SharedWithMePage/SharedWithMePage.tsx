@@ -9,11 +9,13 @@ import { LoadingSpinner } from '../../../components/common/LoadingSpinner/Loadin
 import { EmptyState } from '../../../components/common/EmptyState/EmptyState';
 import { useCopyShared, useSharedWithMe } from '../../../hooks/api/useSharing';
 import { useWorkoutTables } from '../../../hooks/api/useWorkoutTables';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 export function SharedWithMePage() {
   const { data: sharedItems, isLoading: sharedLoading } = useSharedWithMe();
   const { data: myPlans, isLoading: plansLoading } = useWorkoutTables();
   const copyMutation = useCopyShared();
+  const { t } = useLanguage();
 
   const [selectedPlanId, setSelectedPlanId] = useState('');
   const [permission, setPermission] = useState('view');
@@ -21,7 +23,7 @@ export function SharedWithMePage() {
 
   const isLoading = sharedLoading || plansLoading;
 
-  if (isLoading) return <LoadingSpinner label="Se incarca..." />;
+  if (isLoading) return <LoadingSpinner label={t('common.loading')} />;
 
   const selectClasses =
     'w-full px-3 py-2 bg-input-background border border-input rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-ring';
@@ -29,9 +31,9 @@ export function SharedWithMePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Sharing</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">{t('sharing.page.title')}</h1>
         <p className="text-sm sm:text-base text-muted-foreground mt-1">
-          Share your workout plans with others
+          {t('sharing.page.subtitle')}
         </p>
       </div>
 
@@ -42,7 +44,7 @@ export function SharedWithMePage() {
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <Share2 className="w-6 h-6 text-primary" />
-                <h3 className="font-medium text-lg">My Shared Plans</h3>
+                <h3 className="font-medium text-lg">{t('sharing.my.title')}</h3>
               </div>
 
               {myPlans && myPlans.length > 0 ? (
@@ -61,24 +63,24 @@ export function SharedWithMePage() {
                             </p>
                           )}
                         </div>
-                        <Badge variant="info">View</Badge>
+                        <Badge variant="info">{t('sharing.permission.view')}</Badge>
                       </div>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <Users className="w-3 h-3" />
-                        <span>{plan.rows?.length ?? 0} exercises</span>
+                        <span>{t('sharing.exercisesCount', { count: plan.rows?.length ?? 0 })}</span>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  No plans shared yet.
+                  {t('sharing.my.empty')}
                 </p>
               )}
 
               <Button className="w-full">
                 <Share2 className="w-4 h-4" />
-                Share a Plan
+                {t('sharing.my.cta')}
               </Button>
             </div>
           </CardContent>
@@ -90,7 +92,7 @@ export function SharedWithMePage() {
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <Copy className="w-6 h-6 text-[#3b82f6]" />
-                <h3 className="font-medium text-lg">Shared With Me</h3>
+                <h3 className="font-medium text-lg">{t('sharing.sharedWith.title')}</h3>
               </div>
 
               {sharedItems && sharedItems.length > 0 ? (
@@ -103,11 +105,12 @@ export function SharedWithMePage() {
                       <div className="flex items-start justify-between mb-2">
                         <div>
                           <p className="font-medium">
-                            {share.workoutTable?.name ?? 'Plan'}
+                            {share.workoutTable?.name ?? t('sharing.card.unknownPlan')}
                           </p>
                           <p className="text-sm text-muted-foreground">
-                            Shared by{' '}
-                            {share.sharedByUser?.username ?? 'Unknown'}
+                            {t('sharing.sharedWith.sharedBy', {
+                              name: share.sharedByUser?.username ?? t('sharing.sharedWith.unknown'),
+                            })}
                           </p>
                         </div>
                         <Badge
@@ -115,7 +118,9 @@ export function SharedWithMePage() {
                             share.permission === 'copy' ? 'success' : 'info'
                           }
                         >
-                          {share.permission === 'copy' ? 'Copy' : 'View'}
+                          {share.permission === 'copy'
+                            ? t('sharing.permission.copy')
+                            : t('sharing.permission.view')}
                         </Badge>
                       </div>
                       <Button
@@ -126,20 +131,20 @@ export function SharedWithMePage() {
                         onClick={() =>
                           copyMutation.mutate(share.id, {
                             onSuccess: () =>
-                              toast.success('Plan copiat in contul tau'),
-                            onError: () => toast.error('Copierea a esuat'),
+                              toast.success(t('sharing.toast.copied')),
+                            onError: () => toast.error(t('sharing.toast.copyFailed')),
                           })
                         }
                       >
-                        Copy to My Plans
+                        {t('sharing.sharedWith.copyButton')}
                       </Button>
                     </div>
                   ))}
                 </div>
               ) : (
                 <EmptyState
-                  title="No shared plans"
-                  description="Plans shared with you will appear here."
+                  title={t('sharing.sharedWith.empty.title')}
+                  description={t('sharing.sharedWith.empty.desc')}
                 />
               )}
             </div>
@@ -151,18 +156,19 @@ export function SharedWithMePage() {
       <Card>
         <CardContent>
           <div className="space-y-4">
-            <h3 className="font-medium text-lg">Share a Workout Plan</h3>
+            <h3 className="font-medium text-lg">{t('sharing.form.title')}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="text-sm text-muted-foreground mb-2 block">
-                  Select Plan
+                <label htmlFor="share-plan-select" className="text-sm text-muted-foreground mb-2 block">
+                  {t('sharing.form.selectPlan')}
                 </label>
                 <select
+                  id="share-plan-select"
                   className={selectClasses}
                   value={selectedPlanId}
                   onChange={(e) => setSelectedPlanId(e.target.value)}
                 >
-                  <option value="">Choose a plan...</option>
+                  <option value="">{t('sharing.form.selectPlanPlaceholder')}</option>
                   {(myPlans ?? []).map((plan) => (
                     <option key={plan.id} value={plan.id}>
                       {plan.name}
@@ -171,35 +177,36 @@ export function SharedWithMePage() {
                 </select>
               </div>
               <div>
-                <label className="text-sm text-muted-foreground mb-2 block">
-                  Permission Level
+                <label htmlFor="share-permission-select" className="text-sm text-muted-foreground mb-2 block">
+                  {t('sharing.form.permission.label')}
                 </label>
                 <select
+                  id="share-permission-select"
                   className={selectClasses}
                   value={permission}
                   onChange={(e) => setPermission(e.target.value)}
                 >
-                  <option value="view">View Only</option>
-                  <option value="copy">Copy Allowed</option>
+                  <option value="view">{t('sharing.form.permission.viewOnly')}</option>
+                  <option value="copy">{t('sharing.form.permission.copyAllowed')}</option>
                 </select>
               </div>
             </div>
             <Input
-              placeholder="Enter email address"
+              placeholder={t('sharing.form.emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
             <Button
               onClick={() => {
                 if (!selectedPlanId || !email) {
-                  toast.error('Select a plan and enter an email');
+                  toast.error(t('sharing.form.error.missing'));
                   return;
                 }
-                toast.success('Invitation sent (not implemented yet)');
+                toast.success(t('sharing.form.toast.queued'));
                 setEmail('');
               }}
             >
-              Send Invitation
+              {t('sharing.form.send')}
             </Button>
           </div>
         </CardContent>

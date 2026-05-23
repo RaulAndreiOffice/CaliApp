@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { Card } from '../../ui/Card';
 import { Badge } from '../../ui/Badge';
 import { formatDate } from '../../../utils/formatters';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import type { WorkoutTable } from '../../../types/workoutTable.types';
 
 interface WorkoutTableCardProps {
@@ -9,6 +10,7 @@ interface WorkoutTableCardProps {
 }
 
 export function WorkoutTableCard({ table }: WorkoutTableCardProps) {
+  const { t } = useLanguage();
   const rowsCount = table.rows?.length ?? 0;
   return (
     <Link to={`/workout-tables/${table.id}`} className="block no-underline">
@@ -19,7 +21,7 @@ export function WorkoutTableCard({ table }: WorkoutTableCardProps) {
               <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <h3 className="font-medium text-base sm:text-lg">{table.name}</h3>
                 <Badge variant={table.isActive ? 'success' : 'default'}>
-                  {table.isActive ? 'Activ' : 'Arhivat'}
+                  {table.isActive ? t('plans.card.active') : t('plans.card.archived')}
                 </Badge>
               </div>
               {table.description && (
@@ -38,22 +40,22 @@ export function WorkoutTableCard({ table }: WorkoutTableCardProps) {
                   <span className="truncate">{row.exercise?.name ?? '—'}</span>
                   <span className="text-muted-foreground shrink-0 ml-2">
                     {row.plannedSets} × {row.plannedTargetValue}
-                    {row.exercise?.measurementType === 'time' ? 's' : ''}
+                    {row.exercise?.measurementType === 'time' ? t('common.seconds') : ''}
                   </span>
                 </div>
               ))}
               {table.rows.length > 3 && (
                 <p className="text-xs sm:text-sm text-muted-foreground text-center">
-                  +{table.rows.length - 3} exercitii in plus
+                  {t('plans.card.moreExercises', { count: table.rows.length - 3 })}
                 </p>
               )}
             </div>
           )}
 
           <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground">
-            <span>{rowsCount} exercitii</span>
+            <span>{t('plans.card.exercisesCount', { count: rowsCount })}</span>
             <span>•</span>
-            <span>Creat {formatDate(table.createdAt)}</span>
+            <span>{t('plans.card.created', { date: formatDate(table.createdAt) })}</span>
           </div>
         </div>
       </Card>

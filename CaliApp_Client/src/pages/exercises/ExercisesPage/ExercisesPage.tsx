@@ -9,6 +9,7 @@ import { LoadingSpinner } from '../../../components/common/LoadingSpinner/Loadin
 import { ExerciseList } from '../../../components/exercises/ExerciseList/ExerciseList';
 import { ExerciseForm } from '../../../components/exercises/ExerciseForm/ExerciseForm';
 import { useCreateExercise, useExercises } from '../../../hooks/api/useExercises';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import type { MeasurementType } from '../../../types/exercise.types';
 
 type Filter = 'all' | MeasurementType;
@@ -16,6 +17,7 @@ type Filter = 'all' | MeasurementType;
 export function ExercisesPage() {
   const { data, isLoading } = useExercises();
   const createMutation = useCreateExercise();
+  const { t } = useLanguage();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -32,11 +34,11 @@ export function ExercisesPage() {
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Exercitii</h1>
-          <p className="text-sm sm:text-base text-muted-foreground mt-1">Gestioneaza exercitiile tale</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">{t('exercises.title')}</h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-1">{t('exercises.page.subtitle')}</p>
         </div>
         <Button icon={<Plus size={16} />} onClick={() => setDialogOpen(true)} className="w-full sm:w-auto">
-          Adauga
+          {t('common.add')}
         </Button>
       </div>
 
@@ -44,38 +46,38 @@ export function ExercisesPage() {
         <SearchInput
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Cauta exercitii..."
+          placeholder={t('exercises.page.searchPlaceholder')}
         />
         <Select
           value={filter}
           onChange={(e) => setFilter(e.target.value as Filter)}
           options={[
-            { value: 'all', label: 'Toate' },
-            { value: 'reps', label: 'Reps' },
-            { value: 'time', label: 'Time' },
+            { value: 'all', label: t('exercises.category.all') },
+            { value: 'reps', label: t('exercises.filter.reps') },
+            { value: 'time', label: t('exercises.filter.time') },
           ]}
         />
       </div>
 
       {isLoading ? (
-        <LoadingSpinner label="Se incarca exercitiile..." />
+        <LoadingSpinner label={t('common.loading')} />
       ) : (
         <ExerciseList exercises={filtered} />
       )}
 
       <Dialog
         open={dialogOpen}
-        title="Adauga exercitiu"
+        title={t('exercises.page.dialog.addTitle')}
         onClose={() => setDialogOpen(false)}
       >
         <ExerciseForm
-          onSubmit={(data) =>
-            createMutation.mutate(data, {
+          onSubmit={(payload) =>
+            createMutation.mutate(payload, {
               onSuccess: () => {
-                toast.success('Exercitiu adaugat');
+                toast.success(t('exercises.toast.created'));
                 setDialogOpen(false);
               },
-              onError: () => toast.error('Eroare la salvare'),
+              onError: () => toast.error(t('exercises.toast.createFailed')),
             })
           }
           onCancel={() => setDialogOpen(false)}

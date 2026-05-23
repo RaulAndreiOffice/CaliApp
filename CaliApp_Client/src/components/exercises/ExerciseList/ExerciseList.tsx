@@ -1,5 +1,6 @@
 import { ExerciseCard } from '../ExerciseCard/ExerciseCard';
 import { EmptyState } from '../../common/EmptyState/EmptyState';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import type { Exercise } from '../../../types/exercise.types';
 
 interface ExerciseListProps {
@@ -7,11 +8,12 @@ interface ExerciseListProps {
 }
 
 export function ExerciseList({ exercises }: ExerciseListProps) {
+  const { t } = useLanguage();
   if (exercises.length === 0) {
     return (
       <EmptyState
-        title="Niciun exercitiu inca"
-        description="Adauga primul tau exercitiu personalizat."
+        title={t('exercises.empty.title')}
+        description={t('exercises.list.empty.desc')}
       />
     );
   }

@@ -15,6 +15,7 @@ import {
 } from '../../../hooks/api/useWorkoutSessions';
 import { useDeleteSet, useUpdateSet } from '../../../hooks/api/usePerformedSets';
 import { useWorkoutStore } from '../../../stores/workout.store';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import { formatDate } from '../../../utils/formatters';
 
 type EditingCell = { rowId: string; setId: string } | null;
@@ -27,6 +28,7 @@ export function WorkoutSessionDetailPage() {
   const updateSession = useUpdateSession();
   const activeSessionId = useWorkoutStore((s) => s.activeSessionId);
   const endWorkoutInStore = useWorkoutStore((s) => s.endSession);
+  const { t } = useLanguage();
 
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
@@ -44,18 +46,18 @@ export function WorkoutSessionDetailPage() {
     }
   }, [editingCell]);
 
-  if (isLoading) return <LoadingSpinner label="Se incarca sesiunea..." />;
+  if (isLoading) return <LoadingSpinner label={t('common.loading')} />;
 
   if (!session) {
     return (
       <div className="space-y-4 sm:space-y-6">
         <Button variant="ghost" onClick={() => navigate('/workout-sessions')} size="sm">
           <ArrowLeft className="w-4 h-4" />
-          Back to Sessions
+          {t('sessionDetail.back')}
         </Button>
         <EmptyState
-          title="Sesiunea nu a fost gasita"
-          description="Verifica istoricul antrenamentelor si incearca din nou."
+          title={t('sessionDetail.notFound.title')}
+          description={t('sessionDetail.notFound.desc')}
         />
       </div>
     );
@@ -92,10 +94,10 @@ export function WorkoutSessionDetailPage() {
       { id: sessionId, data: { notes: notesValue } },
       {
         onSuccess: () => {
-          toast.success('Notite salvate');
+          toast.success(t('sessionDetail.notes.toast.saved'));
           setNotesOpen(false);
         },
-        onError: () => toast.error('Nu am putut salva notitele'),
+        onError: () => toast.error(t('sessionDetail.notes.toast.failed')),
       },
     );
   };
@@ -104,12 +106,17 @@ export function WorkoutSessionDetailPage() {
     deleteSession.mutate(sessionId, {
       onSuccess: () => {
         if (activeSessionId === sessionId) endWorkoutInStore();
-        toast.success('Sesiune stearsa');
+        toast.success(t('sessions.toast.deleted'));
         navigate('/workout-sessions');
       },
-      onError: () => toast.error('Nu am putut sterge sesiunea'),
+      onError: () => toast.error(t('sessions.toast.deleteFailed')),
     });
   };
+
+  let statusVariant: 'success' | 'info' | 'danger';
+  if (session.status === 'completed') statusVariant = 'success';
+  else if (session.status === 'started') statusVariant = 'info';
+  else statusVariant = 'danger';
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -119,14 +126,14 @@ export function WorkoutSessionDetailPage() {
         size="sm"
       >
         <ArrowLeft className="w-4 h-4" />
-        <span>Back to Sessions</span>
+        <span>{t('sessionDetail.back')}</span>
       </Button>
 
       {/* Title + status */}
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2 truncate">
-            {session.workoutTableName ?? 'Antrenament'}
+            {session.workoutTableName ?? t('workout.title')}
           </h1>
           {session.notes && (
             <p className="text-sm sm:text-base text-muted-foreground">
@@ -135,24 +142,14 @@ export function WorkoutSessionDetailPage() {
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <Badge
-            variant={
-              session.status === 'completed'
-                ? 'success'
-                : session.status === 'started'
-                  ? 'info'
-                  : 'danger'
-            }
-          >
-            {session.status}
-          </Badge>
+          <Badge variant={statusVariant}>{session.status}</Badge>
           <Button
             variant="secondary"
             size="sm"
             icon={<Pencil size={14} />}
             onClick={openNotes}
           >
-            Notite
+            {t('sessionDetail.notes.button')}
           </Button>
           <Button
             variant="danger"
@@ -160,7 +157,7 @@ export function WorkoutSessionDetailPage() {
             icon={<Trash2 size={14} />}
             onClick={() => setConfirmDeleteOpen(true)}
           >
-            Sterge
+            {t('common.delete')}
           </Button>
         </div>
       </div>
@@ -171,7 +168,7 @@ export function WorkoutSessionDetailPage() {
           <CardContent className="pt-3 sm:pt-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-1">
               <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="text-xs sm:text-sm">Date</span>
+              <span className="text-xs sm:text-sm">{t('sessionDetail.stat.date')}</span>
             </div>
             <p className="text-lg sm:text-xl font-bold">
               {formatDate(session.startedAt)}
@@ -183,10 +180,10 @@ export function WorkoutSessionDetailPage() {
           <CardContent className="pt-3 sm:pt-4">
             <div className="flex items-center gap-2 text-muted-foreground mb-1">
               <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="text-xs sm:text-sm">Duration</span>
+              <span className="text-xs sm:text-sm">{t('sessionDetail.stat.duration')}</span>
             </div>
             <p className="text-lg sm:text-xl font-bold">
-              {duration !== null ? `${duration} min` : '—'}
+              {duration !== null ? `${duration} ${t('common.minutes')}` : '—'}
             </p>
           </CardContent>
         </Card>
@@ -194,7 +191,7 @@ export function WorkoutSessionDetailPage() {
         <Card>
           <CardContent className="pt-3 sm:pt-4">
             <p className="text-xs sm:text-sm text-muted-foreground mb-1">
-              Total Sets
+              {t('sessionDetail.stat.totalSets')}
             </p>
             <p className="text-lg sm:text-xl font-bold">{totalSets}</p>
           </CardContent>
@@ -203,7 +200,7 @@ export function WorkoutSessionDetailPage() {
         <Card>
           <CardContent className="pt-3 sm:pt-4">
             <p className="text-xs sm:text-sm text-muted-foreground mb-1">
-              Total Reps/Time
+              {t('sessionDetail.stat.totalReps')}
             </p>
             <p className="text-lg sm:text-xl font-bold">{totalReps}</p>
           </CardContent>
@@ -214,14 +211,14 @@ export function WorkoutSessionDetailPage() {
       <Card>
         <CardHeader>
           <CardTitle className="text-base sm:text-lg">
-            Exercises Performed
+            {t('sessionDetail.exercises.title')}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-3 sm:space-y-4">
             {rows.map((row) => {
               const name =
-                row.exercise?.name ?? row.exerciseName ?? 'Exercitiu';
+                row.exercise?.name ?? row.exerciseName ?? t('sessions.card.exercise.fallback');
               const sets = row.performedSets ?? [];
               const totalValue = sets.reduce(
                 (acc, s) => acc + s.actualValue,
@@ -230,8 +227,10 @@ export function WorkoutSessionDetailPage() {
               const isTime =
                 (row.exercise?.measurementType ??
                   row.measurementTypeSnapshot) === 'time';
-              const unitLabel = isTime ? 'seconds' : 'reps';
-              const unitShort = isTime ? 's' : '';
+              const unitLabel = isTime
+                ? t('sessionDetail.exercises.unit.seconds')
+                : t('sessionDetail.exercises.unit.reps');
+              const unitShort = isTime ? t('common.seconds') : '';
               const plannedSets =
                 row.plannedSetsSnapshot ?? row.plannedSets ?? 0;
               const plannedTarget =
@@ -248,12 +247,15 @@ export function WorkoutSessionDetailPage() {
                         {name}
                       </h4>
                       <p className="text-xs sm:text-sm text-muted-foreground">
-                        Planned: {plannedSets} sets × {plannedTarget}{' '}
-                        {unitLabel}
+                        {t('sessionDetail.exercises.planned', {
+                          sets: plannedSets,
+                          target: plannedTarget,
+                          unit: unitLabel,
+                        })}
                       </p>
                     </div>
                     <Badge variant="default" className="shrink-0">
-                      {sets.length} / {plannedSets} sets
+                      {sets.length} / {plannedSets} {t('common.sets')}
                     </Badge>
                   </div>
 
@@ -287,7 +289,7 @@ export function WorkoutSessionDetailPage() {
                   </div>
 
                   <div className="mt-3 pt-3 border-t border-border flex items-center justify-between text-xs sm:text-sm">
-                    <span className="text-muted-foreground">Total:</span>
+                    <span className="text-muted-foreground">{t('sessions.card.total')}:</span>
                     <span className="font-medium text-primary">
                       {totalValue} {unitLabel}
                     </span>
@@ -298,7 +300,7 @@ export function WorkoutSessionDetailPage() {
 
             {rows.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No exercises recorded for this session.
+                {t('sessionDetail.exercises.empty')}
               </p>
             )}
           </div>
@@ -307,7 +309,7 @@ export function WorkoutSessionDetailPage() {
 
       <Dialog
         open={confirmDeleteOpen}
-        title="Sterge sesiunea?"
+        title={t('sessions.confirmDelete.title')}
         onClose={() =>
           deleteSession.isPending ? undefined : setConfirmDeleteOpen(false)
         }
@@ -319,7 +321,7 @@ export function WorkoutSessionDetailPage() {
               onClick={() => setConfirmDeleteOpen(false)}
               disabled={deleteSession.isPending}
             >
-              Anuleaza
+              {t('common.cancel')}
             </Button>
             <Button
               variant="danger"
@@ -327,19 +329,19 @@ export function WorkoutSessionDetailPage() {
               onClick={handleDeleteSession}
               loading={deleteSession.isPending}
             >
-              Sterge
+              {t('common.delete')}
             </Button>
           </>
         }
       >
         <p className="text-sm text-muted-foreground">
-          Aceasta actiune este permanenta. Setarile, exercitiile si seriile efectuate vor fi sterse.
+          {t('sessions.confirmDelete.desc')}
         </p>
       </Dialog>
 
       <Dialog
         open={notesOpen}
-        title="Editeaza notitele"
+        title={t('sessionDetail.notes.title')}
         onClose={() => (updateSession.isPending ? undefined : setNotesOpen(false))}
         footer={
           <>
@@ -349,14 +351,14 @@ export function WorkoutSessionDetailPage() {
               onClick={() => setNotesOpen(false)}
               disabled={updateSession.isPending}
             >
-              Anuleaza
+              {t('common.cancel')}
             </Button>
             <Button
               size="sm"
               onClick={saveNotes}
               loading={updateSession.isPending}
             >
-              Salveaza
+              {t('common.save')}
             </Button>
           </>
         }
@@ -365,7 +367,8 @@ export function WorkoutSessionDetailPage() {
           value={notesValue}
           onChange={(e) => setNotesValue(e.target.value)}
           rows={5}
-          placeholder="Cum a fost antrenamentul?"
+          placeholder={t('sessionDetail.notes.placeholder')}
+          aria-label={t('sessionDetail.notes.title')}
           className="w-full bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
         />
       </Dialog>
@@ -401,9 +404,10 @@ function PerformedSetCell({
   inputRef,
   startEdit,
   endEdit,
-}: PerformedSetCellProps) {
+}: Readonly<PerformedSetCellProps>) {
   const updateSet = useUpdateSet(sessionId, rowId, setId);
   const deleteSet = useDeleteSet(sessionId, rowId);
+  const { t } = useLanguage();
 
   const commit = (raw: string) => {
     const num = Number.parseInt(raw, 10);
@@ -416,7 +420,7 @@ function PerformedSetCell({
       {
         onSuccess: () => endEdit(),
         onError: () => {
-          toast.error('Nu am putut actualiza seria');
+          toast.error(t('sessionDetail.set.updateFailed'));
           endEdit();
         },
       },
@@ -426,15 +430,15 @@ function PerformedSetCell({
   const remove = (e: React.MouseEvent) => {
     e.stopPropagation();
     deleteSet.mutate(setId, {
-      onSuccess: () => toast.success('Serie stearsa'),
-      onError: () => toast.error('Nu am putut sterge seria'),
+      onSuccess: () => toast.success(t('sessionDetail.set.deleted')),
+      onError: () => toast.error(t('sessionDetail.set.deleteFailed')),
     });
   };
 
   return (
     <div className="relative p-2.5 sm:p-3 bg-muted/30 rounded-lg text-center group">
       <p className="text-xs text-muted-foreground mb-0.5">
-        Set {setNumber}
+        {t('sessions.card.set')} {setNumber}
       </p>
       {isEditing ? (
         <input
@@ -450,13 +454,14 @@ function PerformedSetCell({
           }}
           onBlur={() => commit(inputValue)}
           className="w-full h-9 text-center bg-primary/10 border border-primary rounded-md text-base sm:text-lg font-bold focus:outline-none focus:ring-1 focus:ring-primary text-primary"
+          aria-label={t('sessionDetail.set.editTitle')}
         />
       ) : (
         <button
           type="button"
           onClick={startEdit}
           className="w-full text-base sm:text-lg font-bold text-primary hover:underline"
-          title="Editeaza valoarea"
+          title={t('sessionDetail.set.editTitle')}
         >
           {value}
           {unitShort && <span className="text-xs ml-0.5">{unitShort}</span>}
@@ -467,8 +472,8 @@ function PerformedSetCell({
         onClick={remove}
         disabled={deleteSet.isPending}
         className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-muted text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-40"
-        title="Sterge seria"
-        aria-label={`Sterge set ${setNumber}`}
+        title={t('sessionDetail.set.deleteTooltip')}
+        aria-label={`${t('sessionDetail.set.deleteTooltip')} ${setNumber}`}
       >
         <X className="w-3 h-3" />
       </button>

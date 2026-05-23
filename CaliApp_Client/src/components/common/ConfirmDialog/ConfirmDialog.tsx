@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -15,30 +16,36 @@ export function ConfirmDialog({
   open,
   title,
   description,
-  confirmLabel = 'Confirma',
-  cancelLabel = 'Anuleaza',
+  confirmLabel,
+  cancelLabel,
   variant = 'primary',
   onConfirm,
   onCancel,
-}: ConfirmDialogProps) {
+}: Readonly<ConfirmDialogProps>) {
+  const { t } = useLanguage();
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onCancel();
     }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    globalThis.addEventListener('keydown', onKey);
+    return () => globalThis.removeEventListener('keydown', onKey);
   }, [open, onCancel]);
 
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 fade-in" onClick={onCancel}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 fade-in">
+      <button
+        type="button"
+        aria-label={cancelLabel ?? t('common.cancel')}
+        className="absolute inset-0 cursor-default"
+        onClick={onCancel}
+      />
       <div
-        className="glass rounded-2xl p-6 w-full max-w-md shadow-xl scale-in"
+        className="glass rounded-2xl p-6 w-full max-w-md shadow-xl scale-in relative z-10"
         role="dialog"
         aria-modal="true"
-        onClick={(e) => e.stopPropagation()}
       >
         <h3 className="text-lg font-semibold mb-2">{title}</h3>
         {description && (
@@ -50,7 +57,7 @@ export function ConfirmDialog({
             className="px-4 py-2.5 text-sm font-medium rounded-xl border border-border bg-card hover:bg-muted/30 transition-colors duration-[var(--d-fast,160ms)] press-down"
             onClick={onCancel}
           >
-            {cancelLabel}
+            {cancelLabel ?? t('common.cancel')}
           </button>
           <button
             type="button"
@@ -61,7 +68,7 @@ export function ConfirmDialog({
             }`}
             onClick={onConfirm}
           >
-            {confirmLabel}
+            {confirmLabel ?? t('common.confirm')}
           </button>
         </div>
       </div>

@@ -6,6 +6,7 @@ import {
 } from '../../../utils/validators';
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 interface WorkoutTableFormProps {
   defaultValues?: Partial<CreateWorkoutTableInput>;
@@ -19,9 +20,10 @@ export function WorkoutTableForm({
   defaultValues,
   onSubmit,
   onCancel,
-  submitLabel = 'Salveaza',
+  submitLabel,
   loading,
 }: WorkoutTableFormProps) {
+  const { t } = useLanguage();
   const {
     register,
     handleSubmit,
@@ -34,24 +36,24 @@ export function WorkoutTableForm({
   return (
     <form className="flex flex-col gap-3" onSubmit={handleSubmit(onSubmit)}>
       <Input
-        label="Nume plan"
-        placeholder="ex: Push Day"
+        label={t('plans.form.name')}
+        placeholder={t('plans.form.namePlaceholder')}
         error={errors.name?.message}
         {...register('name')}
       />
       <Input
-        label="Descriere (optional)"
+        label={t('plans.form.descriptionOptional')}
         error={errors.description?.message}
         {...register('description')}
       />
       <div className="flex justify-end gap-2 mt-2">
         {onCancel && (
           <Button type="button" variant="secondary" onClick={onCancel}>
-            Anuleaza
+            {t('common.cancel')}
           </Button>
         )}
         <Button type="submit" loading={loading}>
-          {submitLabel}
+          {submitLabel ?? t('common.save')}
         </Button>
       </div>
     </form>

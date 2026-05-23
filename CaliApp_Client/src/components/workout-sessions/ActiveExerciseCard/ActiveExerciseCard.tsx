@@ -1,6 +1,7 @@
 import { useCreateSet } from '../../../hooks/api/usePerformedSets';
 import { SetsList } from '../SetsList/SetsList';
 import { ProgressBar } from '../../ui/ProgressBar';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import type { WorkoutSessionRow } from '../../../types/workoutSession.types';
 
 interface ActiveExerciseCardProps {
@@ -8,8 +9,9 @@ interface ActiveExerciseCardProps {
   row: WorkoutSessionRow;
 }
 
-export function ActiveExerciseCard({ sessionId, row }: ActiveExerciseCardProps) {
+export function ActiveExerciseCard({ sessionId, row }: Readonly<ActiveExerciseCardProps>) {
   const createSet = useCreateSet(sessionId, row.id);
+  const { t } = useLanguage();
   const measurementType = row.measurementTypeSnapshot ?? row.measurementType ?? 'reps';
   const plannedSets = row.plannedSetsSnapshot ?? row.plannedSets ?? 0;
   const plannedTarget = row.plannedTargetValueSnapshot ?? row.plannedTargetValue ?? 0;
@@ -20,10 +22,12 @@ export function ActiveExerciseCard({ sessionId, row }: ActiveExerciseCardProps) 
     0
   );
   const totalPlanned = plannedSets * plannedTarget;
+  const isTime = measurementType === 'time';
+  const unit = isTime ? t('common.seconds') : ` ${t('common.reps')}`;
 
   function handleSetSubmit(setNumber: number, value: number) {
     const existing = performedSets.find((s) => s.setNumber === setNumber);
-    if (existing && existing.actualValue === value) return;
+    if (existing?.actualValue === value) return;
     createSet.mutate({ setNumber, actualValue: value });
   }
 
@@ -34,8 +38,7 @@ export function ActiveExerciseCard({ sessionId, row }: ActiveExerciseCardProps) 
           {row.exercise?.name ?? row.exerciseName ?? '—'}
         </h3>
         <span className="text-sm text-muted-foreground">
-          Plan: {plannedSets} x {plannedTarget}
-          {measurementType === 'time' ? 's' : ' rep'}
+          {plannedSets} × {plannedTarget}{unit}
         </span>
       </header>
       <SetsList
@@ -49,8 +52,7 @@ export function ActiveExerciseCard({ sessionId, row }: ActiveExerciseCardProps) 
           <ProgressBar value={totalPerformed} max={totalPlanned} showLabel />
         </div>
         <span className="text-xs text-muted-foreground whitespace-nowrap">
-          {totalPerformed} / {totalPlanned}
-          {measurementType === 'time' ? 's' : ' rep'}
+          {totalPerformed} / {totalPlanned}{unit}
         </span>
       </div>
     </div>

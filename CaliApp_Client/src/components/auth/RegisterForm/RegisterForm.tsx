@@ -6,10 +6,12 @@ import { registerSchema, type RegisterInput } from '../../../utils/validators';
 import { useRegister } from '../../../hooks/api/useAuth';
 import { Input } from '../../ui/Input';
 import { Button } from '../../ui/Button';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 export function RegisterForm() {
   const navigate = useNavigate();
   const registerMutation = useRegister();
+  const { t } = useLanguage();
 
   const {
     register,
@@ -22,11 +24,11 @@ export function RegisterForm() {
     void _confirmPassword;
     registerMutation.mutate(payload, {
       onSuccess: () => {
-        toast.success('Account created! Welcome to CaliAPP!');
+        toast.success(t('auth.register.welcome'));
         navigate('/dashboard', { replace: true });
       },
       onError: () => {
-        toast.error('Registration failed');
+        toast.error(t('auth.register.error'));
       },
     });
   }
@@ -34,44 +36,44 @@ export function RegisterForm() {
   return (
     <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
       <div className="text-center mb-1">
-        <h2 className="text-xl font-bold mb-1">Create your account</h2>
-        <p className="text-sm text-muted-foreground/70">Incepe calatoria ta fitness</p>
+        <h2 className="text-xl font-bold mb-1">{t('auth.register.title')}</h2>
+        <p className="text-sm text-muted-foreground/70">{t('auth.startJourney')}</p>
       </div>
 
       <Input
-        label="Username"
-        placeholder="Enter your username"
+        label={t('auth.field.username')}
+        placeholder={t('auth.field.username.placeholder')}
         autoComplete="username"
         error={errors.username?.message}
         {...register('username')}
       />
       <Input
-        label="Email"
+        label={t('auth.field.email')}
         type="email"
-        placeholder="Enter your email"
+        placeholder={t('auth.field.email.placeholder')}
         autoComplete="email"
         error={errors.email?.message}
         {...register('email')}
       />
       <Input
-        label="Password"
+        label={t('auth.field.password')}
         type="password"
-        placeholder="Enter your password"
+        placeholder={t('auth.field.password.placeholder')}
         autoComplete="new-password"
         error={errors.password?.message}
         {...register('password')}
       />
       <Input
-        label="Confirm Password"
+        label={t('auth.field.confirmPassword')}
         type="password"
-        placeholder="Confirm your password"
+        placeholder={t('auth.field.confirmPassword.placeholder')}
         autoComplete="new-password"
         error={errors.confirmPassword?.message}
         {...register('confirmPassword')}
       />
 
       <Button type="submit" loading={registerMutation.isPending} fullWidth size="lg">
-        Create Account
+        {t('auth.register.submit')}
       </Button>
 
       <div className="text-center">
@@ -79,7 +81,7 @@ export function RegisterForm() {
           to="/login"
           className="text-sm sm:text-base text-primary hover:underline min-h-[44px] inline-flex items-center"
         >
-          Already have an account? Login
+          {t('auth.register.toLogin')}
         </Link>
       </div>
     </form>

@@ -16,6 +16,8 @@ import { useOverview, useTrainingLoadDashboard } from '../../../hooks/api/useSta
 import { useLogRestDay } from '../../../hooks/api/useWorkoutSessions';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner/LoadingSpinner';
 import { useWidgetReorder } from '../../../hooks/useWidgetReorder';
+import { useLanguage } from '../../../contexts/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations';
 import type { TrainingLoadDashboard } from '../../../types/stats.types';
 
 // ─── widget catalog ──────────────────────────────────────────────────────────
@@ -23,20 +25,20 @@ import type { TrainingLoadDashboard } from '../../../types/stats.types';
 type WidgetSize = 'sm' | 'lg';
 
 interface WidgetMeta {
-  title: string;
-  description: string;
+  titleKey: TranslationKey;
+  descKey: TranslationKey;
   size: WidgetSize;
   icon: React.ElementType;
 }
 
 const CATALOG: Record<string, WidgetMeta> = {
-  'stat-sessions':    { title: 'Sesiuni',          description: 'Total sesiuni completate',    size: 'sm', icon: Activity },
-  'stat-streak':      { title: 'Streak',           description: 'Zile consecutive de antrenament', size: 'sm', icon: Zap },
-  'stat-exercises':   { title: 'Exercitii Active', description: 'Exercitii in uz',             size: 'sm', icon: Target },
-  'stat-consistency': { title: 'Constanta',        description: 'Rata de antrenament weekly',  size: 'sm', icon: TrendingUp },
-  'chart-volume':     { title: 'Volum Saptamanal', description: 'Seturi per zi aceasta saptamana', size: 'lg', icon: BarChart2 },
-  'chart-completion': { title: 'Rata Completare',  description: 'Trend repetari aceasta saptamana', size: 'lg', icon: LineChartIcon },
-  'recent-sessions':  { title: 'Sesiuni Recente',  description: 'Ultimele antrenamente',       size: 'lg', icon: Clock },
+  'stat-sessions':    { titleKey: 'dashboard.widget.sessions.title',    descKey: 'dashboard.widget.sessions.desc',    size: 'sm', icon: Activity },
+  'stat-streak':      { titleKey: 'dashboard.widget.streak.title',      descKey: 'dashboard.widget.streak.desc',      size: 'sm', icon: Zap },
+  'stat-exercises':   { titleKey: 'dashboard.widget.exercises.title',   descKey: 'dashboard.widget.exercises.desc',   size: 'sm', icon: Target },
+  'stat-consistency': { titleKey: 'dashboard.widget.consistency.title', descKey: 'dashboard.widget.consistency.desc', size: 'sm', icon: TrendingUp },
+  'chart-volume':     { titleKey: 'dashboard.widget.volume.title',      descKey: 'dashboard.widget.volume.desc',      size: 'lg', icon: BarChart2 },
+  'chart-completion': { titleKey: 'dashboard.widget.completion.title',  descKey: 'dashboard.widget.completion.desc',  size: 'lg', icon: LineChartIcon },
+  'recent-sessions':  { titleKey: 'dashboard.widget.recent.title',      descKey: 'dashboard.widget.recent.desc',      size: 'lg', icon: Clock },
 };
 
 const DEFAULT_WIDGETS = [
@@ -60,9 +62,10 @@ interface WidgetContentProps {
   id: string;
   overview: ReturnType<typeof useOverview>['data'];
   trainingLoad?: TrainingLoadDashboard;
+  t: ReturnType<typeof useLanguage>['t'];
 }
 
-function WidgetContent({ id, overview, trainingLoad }: Readonly<WidgetContentProps>) {
+function WidgetContent({ id, overview, trainingLoad, t }: Readonly<WidgetContentProps>) {
   const currentWeek = trainingLoad?.weeklyTrend.at(-1);
   const dailyData = trainingLoad?.dailyVolume ?? [];
   const weeklySessionGoal = 3;
@@ -73,13 +76,14 @@ function WidgetContent({ id, overview, trainingLoad }: Readonly<WidgetContentPro
 
   const statValues: Record<string, string | number> = {
     'stat-sessions': overview?.totalSessions ?? 0,
-    'stat-streak': `${overview?.streakDays ?? 0} zile`,
+    'stat-streak': t('dashboard.streak.days', { count: overview?.streakDays ?? 0 }),
     'stat-exercises': overview?.activeExercises ?? 0,
     'stat-consistency': `${consistency}%`,
   };
 
   if (id.startsWith('stat-')) {
-    const Icon = CATALOG[id].icon;
+    const meta = CATALOG[id];
+    const Icon = meta.icon;
     const colorClass = STAT_COLORS[id];
     return (
       <div className="flex items-center gap-3">
@@ -87,7 +91,7 @@ function WidgetContent({ id, overview, trainingLoad }: Readonly<WidgetContentPro
           <Icon className="w-5 h-5" />
         </div>
         <div className="min-w-0">
-          <p className="text-xs text-muted-foreground truncate">{CATALOG[id].title}</p>
+          <p className="text-xs text-muted-foreground truncate">{t(meta.titleKey)}</p>
           <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{statValues[id]}</p>
         </div>
       </div>
@@ -105,7 +109,7 @@ function WidgetContent({ id, overview, trainingLoad }: Readonly<WidgetContentPro
             contentStyle={{ backgroundColor: 'var(--glass-bg-strong, rgba(38,38,38,0.85))', backdropFilter: 'blur(40px)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }}
             labelStyle={{ color: '#f5f5f5' }}
           />
-          <Bar dataKey="hardSets" name="Serii grele" fill="#84ff00" radius={[4, 4, 0, 0]} />
+          <Bar dataKey="hardSets" name={t('dashboard.chart.hardSets')} fill="#84ff00" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
     );
@@ -125,7 +129,7 @@ function WidgetContent({ id, overview, trainingLoad }: Readonly<WidgetContentPro
           <Area
             type="monotone"
             dataKey="completionRate"
-            name="Rata completare"
+            name={t('dashboard.chart.completionRate')}
             stroke="#3b82f6"
             fill="#3b82f6"
             fillOpacity={0.15}
@@ -139,8 +143,9 @@ function WidgetContent({ id, overview, trainingLoad }: Readonly<WidgetContentPro
   if (id === 'recent-sessions') {
     const sessions = overview?.recentSessions ?? [];
     if (sessions.length === 0) {
-      return <p className="text-sm text-muted-foreground">Nicio sesiune inca.</p>;
+      return <p className="text-sm text-muted-foreground">{t('dashboard.recentSessions.empty')}</p>;
     }
+    const locale = t('common.locale.date');
     return (
       <div className="space-y-2">
         {sessions.slice(0, 3).map((session) => (
@@ -151,11 +156,11 @@ function WidgetContent({ id, overview, trainingLoad }: Readonly<WidgetContentPro
             <div className="flex-1 min-w-0">
               <p className="font-medium text-sm truncate">{session.workoutTableName}</p>
               <p className="text-xs text-muted-foreground">
-                {new Date(session.startedAt).toLocaleDateString('ro-RO')}
+                {new Date(session.startedAt).toLocaleDateString(locale)}
               </p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
-              <Badge variant="success" className="text-xs">completat</Badge>
+              <Badge variant="success" className="text-xs">{t('dashboard.recentSessions.completed')}</Badge>
               <span className="text-xs text-muted-foreground tabular-nums">
                 {Math.round(session.completionRate)}%
               </span>
@@ -176,6 +181,7 @@ export function DashboardPage() {
   const { data, isLoading } = useOverview();
   const trainingLoad = useTrainingLoadDashboard(6);
   const logRestDay = useLogRestDay();
+  const { t } = useLanguage();
   const [widgets, setWidgets] = useState<string[]>(DEFAULT_WIDGETS);
   const [editMode, setEditMode] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
@@ -184,18 +190,18 @@ export function DashboardPage() {
     enabled: editMode,
     ids: widgets,
     onReorder: setWidgets,
-    onLongPressStart: () => toast.success('Trage widget-ul pentru a-l muta', { duration: 1200 }),
+    onLongPressStart: () => toast.success(t('widget.editMode.dragHint'), { duration: 1200 }),
   });
 
   const handleRestDay = () => {
     logRestDay.mutate(
       {},
       {
-        onSuccess: () => toast.success('Rest day inregistrat pentru azi'),
+        onSuccess: () => toast.success(t('sessions.toast.restLogged')),
         onError: (err: unknown) => {
           const msg = (err as { response?: { data?: { error?: { message?: string } } } })
             ?.response?.data?.error?.message;
-          toast.error(msg ?? 'Nu am putut inregistra rest day-ul');
+          toast.error(msg ?? t('sessions.toast.restFailed'));
         },
       }
     );
@@ -216,17 +222,17 @@ export function DashboardPage() {
     });
   };
 
-  if (isLoading || trainingLoad.isLoading) return <LoadingSpinner label="Se incarca..." />;
+  if (isLoading || trainingLoad.isLoading) return <LoadingSpinner label={t('common.loading')} />;
 
   return (
     <div className="space-y-4 sm:space-y-5">
-      {/* Header — stacks on mobile, side-by-side on sm+ */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-xl sm:text-2xl font-bold leading-tight truncate">
-            Buna, <span className="serif-accent">{user?.username ?? 'atlet'}</span> 👋
+            {t('dashboard.greeting', { name: user?.username ?? t('dashboard.athlete') })}
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Progresul tau saptamanal</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">{t('dashboard.subtitle')}</p>
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -236,10 +242,10 @@ export function DashboardPage() {
               onClick={handleRestDay}
               disabled={logRestDay.isPending}
               className="flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg bg-card border border-border text-muted-foreground text-sm font-medium hover:text-foreground hover:border-[#06b6d4]/60 hover:bg-[#06b6d4]/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title="Marcheaza ziua de azi ca rest day"
+              title={t('dashboard.restDay.tooltip')}
             >
               <Moon className="w-3.5 h-3.5" />
-              Rest day
+              {t('dashboard.restDay.button')}
             </button>
           )}
           {editMode && availableToAdd.length > 0 && (
@@ -249,7 +255,7 @@ export function DashboardPage() {
               className="flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg bg-card border border-dashed border-primary/60 text-primary text-sm font-medium hover:bg-primary/10 transition-colors"
             >
               <Plus className="w-3.5 h-3.5" />
-              Adauga
+              {t('widget.editMode.add')}
             </button>
           )}
           <button
@@ -263,21 +269,21 @@ export function DashboardPage() {
             )}
           >
             {editMode ? (
-              <><Check className="w-3.5 h-3.5" /> Gata</>
+              <><Check className="w-3.5 h-3.5" /> {t('widget.editMode.toggle.on')}</>
             ) : (
-              <><LayoutDashboard className="w-3.5 h-3.5" /> Editeaza</>
+              <><LayoutDashboard className="w-3.5 h-3.5" /> {t('widget.editMode.toggle.off')}</>
             )}
           </button>
         </div>
       </div>
 
-      {/* Edit mode hint — explicit mobile instructions */}
+      {/* Edit mode hint */}
       {editMode && (
         <p className="text-xs text-muted-foreground bg-card border border-border rounded-lg px-3 py-2 leading-relaxed">
-          <span className="hidden sm:inline">Trage widget-urile pentru a le reordona</span>
-          <span className="sm:hidden">Tine apasat pe widget, apoi trage. Apasa Gata ca sa revii la scroll normal</span>
+          <span className="hidden sm:inline">{t('widget.editMode.tipDesktop')}</span>
+          <span className="sm:hidden">{t('widget.editMode.tipMobile')}</span>
           {' · '}
-          <strong className="text-foreground">×</strong> pentru a elimina · <strong className="text-foreground">Adauga</strong> pentru a adauga
+          {t('widget.editMode.tipMore')}
         </p>
       )}
 
@@ -291,14 +297,15 @@ export function DashboardPage() {
           const isDragging = draggingId === id;
           const pressing = isPressing(id);
           const dragProps = getItemProps(id);
+          const widgetTitle = t(meta.titleKey);
 
           return (
             <div
               key={id}
               data-widget-id={id}
               role={editMode ? 'button' : undefined}
-              aria-roledescription={editMode ? 'Widget mutabil cu sageti sus/jos' : undefined}
-              aria-label={meta.title}
+              aria-roledescription={editMode ? t('dashboard.widget.aria.movable') : undefined}
+              aria-label={widgetTitle}
               tabIndex={editMode ? 0 : undefined}
               onPointerDown={dragProps.onPointerDown}
               onKeyDown={editMode ? (e) => {
@@ -326,7 +333,7 @@ export function DashboardPage() {
                   {editMode && (
                     <GripVertical className="w-4 h-4 text-muted-foreground/50 shrink-0 -ml-1" />
                   )}
-                  <span className="text-sm font-medium text-foreground truncate">{meta.title}</span>
+                  <span className="text-sm font-medium text-foreground truncate">{widgetTitle}</span>
                 </div>
                 {editMode && (
                   <button
@@ -335,7 +342,7 @@ export function DashboardPage() {
                     onPointerDown={(e) => e.stopPropagation()}
                     onClick={(e) => { e.stopPropagation(); removeWidget(id); }}
                     className="w-7 h-7 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:bg-destructive/20 hover:text-destructive transition-colors shrink-0"
-                    aria-label={`Elimina ${meta.title}`}
+                    aria-label={t('dashboard.widget.aria.remove', { title: widgetTitle })}
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
@@ -347,6 +354,7 @@ export function DashboardPage() {
                   id={id}
                   overview={data}
                   trainingLoad={trainingLoad.data}
+                  t={t}
                 />
               </div>
             </div>
@@ -356,14 +364,14 @@ export function DashboardPage() {
         {widgets.length === 0 && (
           <div className="sm:col-span-2 flex flex-col items-center justify-center py-16 text-center gap-3">
             <LayoutDashboard className="w-10 h-10 text-muted-foreground/30" />
-            <p className="text-muted-foreground text-sm">Dashboard-ul este gol.</p>
+            <p className="text-muted-foreground text-sm">{t('dashboard.empty.title')}</p>
             <button
               type="button"
               onClick={() => setAddOpen(true)}
               className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              Adauga primul widget
+              {t('dashboard.empty.add')}
             </button>
           </div>
         )}
@@ -374,26 +382,26 @@ export function DashboardPage() {
         <dialog
           open
           className="fixed inset-0 z-50 m-0 max-w-none max-h-none w-screen h-screen bg-transparent p-0"
-          aria-label="Adauga widget"
+          aria-label={t('dashboard.add.title')}
         >
           <div className="absolute inset-0 flex items-end sm:items-center justify-center">
             <button
               type="button"
               className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-default"
               onClick={() => setAddOpen(false)}
-              aria-label="Inchide panel"
+              aria-label={t('dashboard.add.closePanel')}
             />
             <div className="relative z-10 w-full sm:max-w-md glass rounded-t-3xl sm:rounded-2xl p-5 shadow-xl scale-in pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="font-semibold text-base">Adauga Widget</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Alege ce vrei sa adaugi pe dashboard</p>
+                  <h3 className="font-semibold text-base">{t('dashboard.add.title')}</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">{t('dashboard.add.subtitle')}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setAddOpen(false)}
                   className="w-9 h-9 flex items-center justify-center rounded-full bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                  aria-label="Inchide"
+                  aria-label={t('common.close')}
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -402,7 +410,7 @@ export function DashboardPage() {
               <div className="space-y-2 max-h-72 overflow-y-auto scrollbar-hide -mx-1 px-1">
                 {availableToAdd.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-6">
-                    Toate widget-urile sunt deja adaugate.
+                    {t('dashboard.add.allAdded')}
                   </p>
                 ) : (
                   availableToAdd.map((id) => {
@@ -422,8 +430,8 @@ export function DashboardPage() {
                           <Icon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium">{meta.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">{meta.description}</p>
+                          <p className="text-sm font-medium">{t(meta.titleKey)}</p>
+                          <p className="text-xs text-muted-foreground truncate">{t(meta.descKey)}</p>
                         </div>
                         <div className="w-6 h-6 rounded-full border border-border flex items-center justify-center shrink-0 group-hover:border-primary group-hover:bg-primary transition-all">
                           <Plus className="w-3 h-3 text-muted-foreground group-hover:text-primary-foreground transition-colors" />

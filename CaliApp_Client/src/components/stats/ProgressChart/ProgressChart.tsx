@@ -8,6 +8,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { formatDateShort } from '../../../utils/formatters';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import type { WeeklyDataPoint } from '../../../types/stats.types';
 
 interface ProgressChartProps {
@@ -15,11 +16,12 @@ interface ProgressChartProps {
   measurementType: 'reps' | 'time';
 }
 
-export function ProgressChart({ data, measurementType }: ProgressChartProps) {
+export function ProgressChart({ data, measurementType }: Readonly<ProgressChartProps>) {
+  const { t } = useLanguage();
   if (data.length === 0) {
     return (
       <div className="py-8 text-center text-sm text-muted-foreground">
-        Nu sunt date suficiente inca pentru un grafic.
+        {t('stats.chart.notEnough')}
       </div>
     );
   }

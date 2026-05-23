@@ -8,6 +8,7 @@ import { LoadingSpinner } from '../../../components/common/LoadingSpinner/Loadin
 import { SessionTimer } from '../../../components/workout-sessions/SessionTimer/SessionTimer';
 import { ActiveExerciseCard } from '../../../components/workout-sessions/ActiveExerciseCard/ActiveExerciseCard';
 import { useWorkoutStore } from '../../../stores/workout.store';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import {
   useCancelSession,
   useCompleteSession,
@@ -21,6 +22,7 @@ export function ActiveWorkoutPage() {
   const { data: session, isLoading, isError } = useWorkoutSession(activeId ?? undefined);
   const completeMutation = useCompleteSession();
   const cancelMutation = useCancelSession();
+  const { t } = useLanguage();
 
   // Auto-recover from stale state: if the persisted session no longer exists on
   // the server, or was already completed/cancelled elsewhere, clear it so the
@@ -34,18 +36,18 @@ export function ActiveWorkoutPage() {
   if (!activeId || isError || staleStatus) {
     return (
       <EmptyState
-        title="Niciun antrenament activ"
-        description="Mergi la un plan si apasa Incepe."
+        title={t('workout.empty.title')}
+        description={t('workout.empty.desc')}
         action={
           <Button onClick={() => navigate('/workout-tables')}>
-            Alege plan
+            {t('workout.empty.pick')}
           </Button>
         }
       />
     );
   }
 
-  if (isLoading || !session) return <LoadingSpinner label="Se incarca..." />;
+  if (isLoading || !session) return <LoadingSpinner label={t('common.loading')} />;
 
   function handleComplete() {
     if (!activeId) return;
@@ -54,7 +56,7 @@ export function ActiveWorkoutPage() {
         endSession();
         navigate(`/workout-sessions/${activeId}`);
       },
-      onError: () => toast.error('Eroare la finalizare'),
+      onError: () => toast.error(t('workout.toast.completeFailed')),
     });
   }
 
@@ -63,7 +65,7 @@ export function ActiveWorkoutPage() {
     cancelMutation.mutate(activeId, {
       onSuccess: () => {
         endSession();
-        toast.success('Antrenament anulat');
+        toast.success(t('workout.toast.cancelled'));
         navigate('/workout-tables');
       },
     });
@@ -73,7 +75,7 @@ export function ActiveWorkoutPage() {
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <h1 className="text-xl sm:text-3xl font-bold truncate min-w-0">
-          {session.workoutTableName ?? 'Antrenament'}
+          {session.workoutTableName ?? t('workout.title')}
         </h1>
         <div className="flex items-center gap-2 flex-wrap">
           <SessionTimer />
@@ -83,7 +85,7 @@ export function ActiveWorkoutPage() {
             onClick={handleCancel}
             loading={cancelMutation.isPending}
           >
-            Anuleaza
+            {t('workout.cancel')}
           </Button>
         </div>
       </div>
@@ -102,7 +104,7 @@ export function ActiveWorkoutPage() {
           onClick={handleComplete}
           loading={completeMutation.isPending}
         >
-          Finalizeaza antrenament
+          {t('workout.finish')}
         </Button>
       </div>
     </div>

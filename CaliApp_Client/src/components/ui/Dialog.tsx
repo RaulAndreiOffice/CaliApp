@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface DialogProps {
   open: boolean;
@@ -9,14 +10,15 @@ interface DialogProps {
   onClose: () => void;
 }
 
-export function Dialog({ open, title, children, footer, onClose }: DialogProps) {
+export function Dialog({ open, title, children, footer, onClose }: Readonly<DialogProps>) {
+  const { t } = useLanguage();
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose();
     }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    globalThis.addEventListener('keydown', onKey);
+    return () => globalThis.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
   if (!open) return null;
@@ -39,7 +41,7 @@ export function Dialog({ open, title, children, footer, onClose }: DialogProps) 
             type="button"
             className="text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-xl bg-transparent transition-colors duration-[var(--d-fast,160ms)] min-h-[44px] min-w-[44px] flex items-center justify-center"
             onClick={onClose}
-            aria-label="Inchide"
+            aria-label={t('common.close')}
           >
             <X size={18} />
           </button>

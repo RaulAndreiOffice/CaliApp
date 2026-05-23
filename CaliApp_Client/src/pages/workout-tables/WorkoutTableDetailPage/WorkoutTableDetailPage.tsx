@@ -10,6 +10,7 @@ import { LoadingSpinner } from '../../../components/common/LoadingSpinner/Loadin
 import { useWorkoutTable } from '../../../hooks/api/useWorkoutTables';
 import { useStartSession } from '../../../hooks/api/useWorkoutSessions';
 import { useWorkoutStore } from '../../../stores/workout.store';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 export function WorkoutTableDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -17,9 +18,10 @@ export function WorkoutTableDetailPage() {
   const { data: table, isLoading } = useWorkoutTable(id);
   const startSession = useStartSession();
   const startSessionInStore = useWorkoutStore((s) => s.startSession);
+  const { t } = useLanguage();
   const [shareOpen, setShareOpen] = useState(false);
 
-  if (isLoading || !table) return <LoadingSpinner label="Se incarca..." />;
+  if (isLoading || !table) return <LoadingSpinner label={t('common.loading')} />;
 
   function handleStart() {
     if (!id) return;
@@ -30,7 +32,7 @@ export function WorkoutTableDetailPage() {
           startSessionInStore(session.id, id);
           navigate('/workout');
         },
-        onError: () => toast.error('Eroare la pornire'),
+        onError: () => toast.error(t('plans.detail.toast.startFailed')),
       }
     );
   }
@@ -50,21 +52,21 @@ export function WorkoutTableDetailPage() {
             icon={<Pencil size={16} />}
             onClick={() => navigate(`/workout-tables/${table.id}/edit`)}
           >
-            Edit
+            {t('common.edit')}
           </Button>
           <Button
             variant="secondary"
             icon={<Share2 size={16} />}
             onClick={() => setShareOpen(true)}
           >
-            Share
+            {t('plans.detail.share')}
           </Button>
           <Button
             icon={<Play size={16} />}
             onClick={handleStart}
             loading={startSession.isPending}
           >
-            Incepe
+            {t('plans.detail.start')}
           </Button>
         </div>
       </div>

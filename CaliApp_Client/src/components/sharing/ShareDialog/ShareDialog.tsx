@@ -7,6 +7,7 @@ import { Dialog } from '../../ui/Dialog';
 import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
 import { Button } from '../../ui/Button';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 interface ShareDialogProps {
   open: boolean;
@@ -14,8 +15,9 @@ interface ShareDialogProps {
   onClose: () => void;
 }
 
-export function ShareDialog({ open, tableId, onClose }: ShareDialogProps) {
+export function ShareDialog({ open, tableId, onClose }: Readonly<ShareDialogProps>) {
   const shareMutation = useShareTable(tableId);
+  const { t } = useLanguage();
   const {
     register,
     handleSubmit,
@@ -29,40 +31,40 @@ export function ShareDialog({ open, tableId, onClose }: ShareDialogProps) {
   function onSubmit(data: ShareInput) {
     shareMutation.mutate(data, {
       onSuccess: () => {
-        toast.success('Plan trimis!');
+        toast.success(t('sharing.dialog.toast.sent'));
         reset();
         onClose();
       },
       onError: () => {
-        toast.error('Trimiterea a esuat');
+        toast.error(t('sharing.dialog.toast.sendFailed'));
       },
     });
   }
 
   return (
-    <Dialog open={open} title="Share plan" onClose={onClose}>
+    <Dialog open={open} title={t('sharing.dialog.shareTitle')} onClose={onClose}>
       <form className="flex flex-col gap-3" onSubmit={handleSubmit(onSubmit)}>
         <Input
-          label="Email destinatar"
+          label={t('sharing.dialog.invite')}
           type="email"
           error={errors.email?.message}
           {...register('email')}
         />
         <Select
-          label="Permisiune"
+          label={t('sharing.dialog.permission')}
           options={[
-            { value: 'view', label: 'View — doar vizualizare' },
-            { value: 'copy', label: 'Copy — poate copia in cont' },
+            { value: 'view', label: t('sharing.dialog.permission.viewLong') },
+            { value: 'copy', label: t('sharing.dialog.permission.copyLong') },
           ]}
           error={errors.permission?.message}
           {...register('permission')}
         />
         <div className="flex justify-end gap-2 mt-2">
           <Button type="button" variant="secondary" onClick={onClose}>
-            Anuleaza
+            {t('common.cancel')}
           </Button>
           <Button type="submit" loading={shareMutation.isPending}>
-            Trimite
+            {t('sharing.dialog.send')}
           </Button>
         </div>
       </form>

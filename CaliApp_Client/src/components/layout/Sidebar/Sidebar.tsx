@@ -12,20 +12,23 @@ import {
 } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { useAuthStore } from '../../../stores/auth.store';
+import { useLanguage } from '../../../contexts/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations';
 
-const NAV_ITEMS = [
-  { to: '/dashboard', label: 'Dashboard', icon: Home },
-  { to: '/exercises', label: 'Exerciții', icon: Dumbbell },
-  { to: '/workout-tables', label: 'Planuri', icon: ClipboardList },
-  { to: '/workout-sessions', label: 'Sesiuni', icon: Activity },
-  { to: '/goals', label: 'Obiective', icon: Target },
-  { to: '/ai-coach', label: 'AI Coach', icon: Sparkles },
-  { to: '/shared-with-me', label: 'Partajare', icon: Share2 },
-  { to: '/profile', label: 'Setări', icon: Settings },
+const NAV_ITEMS: { to: string; labelKey: TranslationKey; icon: typeof Home }[] = [
+  { to: '/dashboard', labelKey: 'nav.dashboardFull', icon: Home },
+  { to: '/exercises', labelKey: 'nav.exercises', icon: Dumbbell },
+  { to: '/workout-tables', labelKey: 'nav.plans', icon: ClipboardList },
+  { to: '/workout-sessions', labelKey: 'nav.sessions', icon: Activity },
+  { to: '/goals', labelKey: 'nav.goals', icon: Target },
+  { to: '/ai-coach', labelKey: 'nav.aiCoach', icon: Sparkles },
+  { to: '/shared-with-me', labelKey: 'nav.shared', icon: Share2 },
+  { to: '/profile', labelKey: 'nav.settings', icon: Settings },
 ];
 
 export function Sidebar() {
   const user = useAuthStore((s) => s.user);
+  const { t } = useLanguage();
 
   return (
     <aside className="hidden md:flex w-60 h-full bg-sidebar border-r border-sidebar-border flex-col hairline relative z-10">
@@ -65,7 +68,7 @@ export function Sidebar() {
               }
             >
               <Icon className="w-[18px] h-[18px]" />
-              <span>{item.label}</span>
+              <span>{t(item.labelKey)}</span>
             </NavLink>
           );
         })}
@@ -84,7 +87,7 @@ export function Sidebar() {
             {user?.username?.[0]?.toUpperCase() ?? '?'}
           </div>
           <div className="flex-1 min-w-0 text-left">
-            <div className="text-sm font-medium leading-tight">{user?.username ?? 'Guest'}</div>
+            <div className="text-sm font-medium leading-tight">{user?.username ?? t('nav.guest')}</div>
             <div className="text-[11px] text-muted-foreground truncate">{user?.email ?? ''}</div>
           </div>
           <ChevronRight className="w-4 h-4 text-muted-foreground" />

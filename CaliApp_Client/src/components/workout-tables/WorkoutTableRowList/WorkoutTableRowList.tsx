@@ -1,5 +1,6 @@
 import { Trash2 } from 'lucide-react';
 import { Button } from '../../ui/Button';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import type { WorkoutTableRow } from '../../../types/workoutTable.types';
 
 interface WorkoutTableRowListProps {
@@ -8,10 +9,11 @@ interface WorkoutTableRowListProps {
 }
 
 export function WorkoutTableRowList({ rows, onDelete }: WorkoutTableRowListProps) {
+  const { t } = useLanguage();
   if (rows.length === 0) {
     return (
       <p className="py-6 text-center text-sm text-muted-foreground">
-        Adauga primul exercitiu in plan.
+        {t('plans.detail.section.exercises.empty')}
       </p>
     );
   }
@@ -23,8 +25,8 @@ export function WorkoutTableRowList({ rows, onDelete }: WorkoutTableRowListProps
           <div className="flex flex-col">
             <span className="font-medium text-sm">{row.exercise?.name ?? '—'}</span>
             <span className="text-xs text-muted-foreground">
-              {row.plannedSets} x {row.plannedTargetValue}
-              {row.exercise?.measurementType === 'time' ? 's' : ' rep'}
+              {row.plannedSets} × {row.plannedTargetValue}
+              {row.exercise?.measurementType === 'time' ? t('common.seconds') : ` ${t('common.reps')}`}
             </span>
           </div>
           {onDelete && (
@@ -34,7 +36,7 @@ export function WorkoutTableRowList({ rows, onDelete }: WorkoutTableRowListProps
               size="sm"
               icon={<Trash2 size={16} />}
               onClick={() => onDelete(row.id)}
-              aria-label="Sterge rand"
+              aria-label={t('plans.detail.row.deleteAria')}
             >
               <span />
             </Button>

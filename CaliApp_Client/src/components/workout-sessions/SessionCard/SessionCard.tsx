@@ -1,14 +1,24 @@
 import { Link } from 'react-router-dom';
 import { Badge } from '../../ui/Badge';
 import { formatRelativeTime } from '../../../utils/formatters';
-import type { WorkoutSession } from '../../../types/workoutSession.types';
+import { useLanguage } from '../../../contexts/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations';
+import type { WorkoutSession, WorkoutSessionStatus } from '../../../types/workoutSession.types';
 
 interface SessionCardProps {
   session: WorkoutSession;
   completionRate?: number;
 }
 
-export function SessionCard({ session, completionRate }: SessionCardProps) {
+const STATUS_KEY: Record<WorkoutSessionStatus, TranslationKey> = {
+  started: 'sessions.status.started',
+  completed: 'sessions.status.completed',
+  cancelled: 'sessions.status.cancelled',
+  rest: 'sessions.status.rest',
+};
+
+export function SessionCard({ session, completionRate }: Readonly<SessionCardProps>) {
+  const { t } = useLanguage();
   const variantByStatus = {
     started: 'info',
     completed: 'success',
@@ -23,14 +33,14 @@ export function SessionCard({ session, completionRate }: SessionCardProps) {
     >
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm sm:text-base truncate">
-          {session.workoutTableName ?? 'Antrenament liber'}
+          {session.workoutTableName ?? t('sessions.card.freeWorkout')}
         </p>
         <p className="text-xs sm:text-sm text-muted-foreground">
           {formatRelativeTime(session.startedAt)}
         </p>
       </div>
       <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-        <Badge variant={variantByStatus[session.status]}>{session.status}</Badge>
+        <Badge variant={variantByStatus[session.status]}>{t(STATUS_KEY[session.status])}</Badge>
         {completionRate !== undefined && (
           <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
             {Math.round(completionRate)}%

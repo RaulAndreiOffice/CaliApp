@@ -18,6 +18,7 @@ import {
 import { useStartSession, useWorkoutSession } from '../../../hooks/api/useWorkoutSessions';
 import { useUpsertPerformedSet } from '../../../hooks/api/usePerformedSets';
 import { useElapsedSeconds, useWorkoutStore } from '../../../stores/workout.store';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import type { WorkoutTable, WorkoutTableRow } from '../../../types/workoutTable.types';
 import type { WorkoutSessionRow } from '../../../types/workoutSession.types';
 
@@ -35,6 +36,7 @@ export function PlansBoard() {
   const { data: tables, isLoading } = useWorkoutTables();
   const createMutation = useCreateWorkoutTable();
   const startSessionMutation = useStartSession();
+  const { t } = useLanguage();
 
   const activeSessionId = useWorkoutStore((s) => s.activeSessionId);
   const activeTableId = useWorkoutStore((s) => s.activeTableId);
@@ -125,9 +127,9 @@ export function PlansBoard() {
       {
         onSuccess: (session) => {
           startWorkoutInStore(session.id, selectedPlan.id);
-          toast.success(`${selectedPlan.name} started!`);
+          toast.success(t('plans.toast.started', { name: selectedPlan.name }));
         },
-        onError: () => toast.error('Eroare la pornire'),
+        onError: () => toast.error(t('plans.toast.startFailed')),
       },
     );
   };
@@ -145,7 +147,7 @@ export function PlansBoard() {
     if (Number.isNaN(num) || num < 0) return;
     const sessionRow = sessionRowByTableRowId.get(tableRowId);
     if (!sessionRow) {
-      toast.error('Sesiunea inca se incarca, mai incearca');
+      toast.error(t('plans.toast.sessionLoading'));
       return;
     }
     const existing = sessionRow.performedSets?.find((s) => s.setNumber === setIndex + 1);
@@ -157,7 +159,7 @@ export function PlansBoard() {
         actualValue: num,
         existingSetId: existing?.id,
       },
-      { onError: () => toast.error('Nu am putut salva seria') },
+      { onError: () => toast.error(t('plans.toast.setSaveFailed')) },
     );
   };
 
@@ -168,35 +170,35 @@ export function PlansBoard() {
   }, 0);
   const progress = totalSets > 0 ? completedSets / totalSets : 0;
 
-  if (isLoading) return <LoadingSpinner label="Se incarca planurile..." />;
+  if (isLoading) return <LoadingSpinner label={t('common.loading')} />;
 
   if (!tables || tables.length === 0) {
     return (
       <>
         <EmptyState
-          title="Niciun plan inca"
-          description="Creeaza primul tau plan de antrenament."
+          title={t('plans.empty.title')}
+          description={t('plans.empty.desc')}
           action={
             <Button icon={<Plus size={16} />} onClick={() => setCreateOpen(true)}>
-              Creeaza plan
+              {t('plans.empty.create')}
             </Button>
           }
         />
-        <Dialog open={createOpen} title="Creeaza plan" onClose={() => setCreateOpen(false)}>
+        <Dialog open={createOpen} title={t('plans.create.title')} onClose={() => setCreateOpen(false)}>
           <WorkoutTableForm
             onSubmit={(d) =>
               createMutation.mutate(d, {
                 onSuccess: (table) => {
-                  toast.success('Plan creat');
+                  toast.success(t('plans.toast.created'));
                   setCreateOpen(false);
                   navigate(`/workout-tables/${table.id}/edit`);
                 },
-                onError: () => toast.error('Eroare la creare'),
+                onError: () => toast.error(t('plans.toast.createFailed')),
               })
             }
             onCancel={() => setCreateOpen(false)}
             loading={createMutation.isPending}
-            submitLabel="Creeaza si editeaza"
+            submitLabel={t('plans.create.submit')}
           />
         </Dialog>
       </>
@@ -213,7 +215,7 @@ export function PlansBoard() {
             type="button"
             onClick={() => {
               if (isActive) {
-                toast.error('Termina sau anuleaza antrenamentul activ inainte sa schimbi planul');
+                toast.error(t('plans.toast.switchBlocked'));
                 return;
               }
               setSelectedIdLocal(plan.id);
@@ -239,7 +241,7 @@ export function PlansBoard() {
           className="px-3.5 min-h-[36px] rounded-lg text-sm font-medium bg-card border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all flex items-center gap-1.5 whitespace-nowrap touch-manipulation"
         >
           <Plus className="w-3.5 h-3.5" />
-          New
+          {t('plans.tab.new')}
         </button>
       </div>
 
@@ -273,8 +275,8 @@ export function PlansBoard() {
                       type="button"
                       onClick={reset}
                       className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                      title="Reset"
-                      aria-label="Reset"
+                      title={t('plans.reset')}
+                      aria-label={t('plans.reset')}
                     >
                       <RotateCcw className="w-4 h-4" />
                     </button>
@@ -284,7 +286,7 @@ export function PlansBoard() {
                       className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 min-h-[36px] rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors"
                     >
                       <Play className="w-3.5 h-3.5 fill-current" />
-                      Continua
+                      {t('plans.continue')}
                     </button>
                   </div>
                 ) : (
@@ -293,8 +295,8 @@ export function PlansBoard() {
                       type="button"
                       onClick={() => navigate(`/workout-tables/${selectedPlan.id}/edit`)}
                       className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                      title="Edit"
-                      aria-label="Edit plan"
+                      title={t('plans.edit')}
+                      aria-label={t('plans.edit')}
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
@@ -305,7 +307,7 @@ export function PlansBoard() {
                       className="flex items-center gap-1.5 bg-primary text-primary-foreground px-3 min-h-[36px] rounded-lg text-xs font-medium hover:bg-primary/90 transition-colors disabled:opacity-50"
                     >
                       <Play className="w-3.5 h-3.5 fill-current" />
-                      Start
+                      {t('plans.start')}
                     </button>
                   </div>
                 )}
@@ -324,7 +326,7 @@ export function PlansBoard() {
           {/* Exercises */}
           {isSelectedPlanLoading && (
             <div className="bg-card border border-border rounded-xl px-4 py-6">
-              <LoadingSpinner label="Se incarca exercitiile..." />
+              <LoadingSpinner label={t('common.loading')} />
             </div>
           )}
 
@@ -337,7 +339,7 @@ export function PlansBoard() {
                 const doneCount = sessionRow?.performedSets?.length ?? 0;
                 const isExDone = doneCount >= row.plannedSets;
                 const isTime = exercise.measurementType === 'time';
-                const unit = isTime ? 's' : '';
+                const unit = isTime ? t('common.seconds') : '';
 
                 return (
                   <div
@@ -417,7 +419,7 @@ export function PlansBoard() {
                                   setInputValue(isDone ? String(val) : '');
                                 }}
                                 disabled={!isActive}
-                                title={isActive ? `Enter set ${setIndex + 1}` : 'Start workout first'}
+                                title={isActive ? t('plans.cell.enter', { n: setIndex + 1 }) : t('plans.cell.placeholderHint')}
                                 className={cn(
                                   'w-14 h-11 sm:w-12 sm:h-9 rounded-md text-sm font-mono transition-all touch-manipulation',
                                   cellState === 'done' && 'bg-primary/20 text-primary border border-primary/50 font-semibold',
@@ -433,9 +435,9 @@ export function PlansBoard() {
                       })}
                       {row.restSeconds ? (
                         <div className="flex flex-col items-center gap-0.5 ml-1">
-                          <span className="text-[10px] text-muted-foreground/60">rest</span>
+                          <span className="text-[10px] text-muted-foreground/60">{t('plans.rest')}</span>
                           <div className="h-8 px-2 flex items-center text-xs text-muted-foreground/50 tabular-nums">
-                            {row.restSeconds}s
+                            {row.restSeconds}{t('common.seconds')}
                           </div>
                         </div>
                       ) : null}
@@ -451,34 +453,34 @@ export function PlansBoard() {
 
           {!isSelectedPlanLoading && sortedRows.length === 0 && !isActive && (
             <div className="text-center py-6 text-muted-foreground text-sm">
-              <p>Acest plan nu are exercitii inca.</p>
+              <p>{t('plans.empty.exercises')}</p>
               <button
                 type="button"
                 onClick={() => navigate(`/workout-tables/${selectedPlan.id}/edit`)}
                 className="text-primary hover:underline mt-1 text-sm"
               >
-                Adauga exercitii
+                {t('plans.empty.exercises.add')}
               </button>
             </div>
           )}
         </>
       )}
 
-      <Dialog open={createOpen} title="Creeaza plan" onClose={() => setCreateOpen(false)}>
+      <Dialog open={createOpen} title={t('plans.create.title')} onClose={() => setCreateOpen(false)}>
         <WorkoutTableForm
           onSubmit={(d) =>
             createMutation.mutate(d, {
               onSuccess: (table) => {
-                toast.success('Plan creat');
+                toast.success(t('plans.toast.created'));
                 setCreateOpen(false);
                 navigate(`/workout-tables/${table.id}/edit`);
               },
-              onError: () => toast.error('Eroare la creare'),
+              onError: () => toast.error(t('plans.toast.createFailed')),
             })
           }
           onCancel={() => setCreateOpen(false)}
           loading={createMutation.isPending}
-          submitLabel="Creeaza si editeaza"
+          submitLabel={t('plans.create.submit')}
         />
       </Dialog>
     </div>

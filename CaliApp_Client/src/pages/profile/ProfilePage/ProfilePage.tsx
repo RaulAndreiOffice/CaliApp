@@ -14,7 +14,7 @@ export function ProfilePage() {
   const user = useAuthStore((s) => s.user);
   const updateUser = useAuthStore((s) => s.updateUser);
   const logout = useAuthStore((s) => s.logout);
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
 
   const profileForm = useForm<UpdateUserRequest>({
     defaultValues: { username: user?.username ?? '' },
@@ -22,8 +22,8 @@ export function ProfilePage() {
   const passwordForm = useForm<ChangePasswordRequest>();
 
   // Training prefs (local state — not yet persisted to API)
-  const [fitnessLevel, setFitnessLevel] = useState('Intermediar');
-  const [trainingDays, setTrainingDays] = useState('4 zile');
+  const [fitnessLevel, setFitnessLevel] = useState('intermediate');
+  const [trainingDays, setTrainingDays] = useState('4');
   const [maxDuration, setMaxDuration] = useState(60);
   const [injuryNotes, setInjuryNotes] = useState('');
 
@@ -36,9 +36,9 @@ export function ProfilePage() {
     try {
       const updated = await userApi.updateMe(data);
       updateUser(updated);
-      toast.success('Profilul a fost actualizat');
+      toast.success(t('profile.toast.profileUpdated'));
     } catch {
-      toast.error('Actualizarea profilului a eșuat');
+      toast.error(t('profile.toast.profileUpdateFailed'));
     }
   }
 
@@ -46,9 +46,9 @@ export function ProfilePage() {
     try {
       await userApi.changePassword(data);
       passwordForm.reset();
-      toast.success('Parola a fost schimbată');
+      toast.success(t('profile.toast.passwordChanged'));
     } catch {
-      toast.error('Schimbarea parolei a eșuat');
+      toast.error(t('profile.toast.passwordChangeFailed'));
     }
   }
 
@@ -58,9 +58,9 @@ export function ProfilePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Setări</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold">{t('profile.title')}</h1>
         <p className="text-sm sm:text-base text-muted-foreground mt-1">
-          Gestionează-ți contul și preferințele
+          {t('profile.subtitle')}
         </p>
       </div>
 
@@ -76,16 +76,16 @@ export function ProfilePage() {
                 <div className="p-2 bg-primary/10 rounded-xl">
                   <User className="w-5 h-5 text-primary" />
                 </div>
-                <h3 className="font-semibold text-lg">Informații Profil</h3>
+                <h3 className="font-semibold text-lg">{t('profile.section.info')}</h3>
               </div>
 
-              <Input label="Email" value={user?.email ?? ''} disabled />
+              <Input label={t('profile.field.email')} value={user?.email ?? ''} disabled />
               <Input
-                label="Nume utilizator"
+                label={t('profile.field.username')}
                 {...profileForm.register('username')}
               />
               <Button type="submit" className="w-full">
-                Actualizează Profilul
+                {t('profile.action.updateProfile')}
               </Button>
             </form>
           </CardContent>
@@ -102,26 +102,26 @@ export function ProfilePage() {
                 <div className="p-2 bg-primary/10 rounded-xl">
                   <Lock className="w-5 h-5 text-primary" />
                 </div>
-                <h3 className="font-semibold text-lg">Securitate</h3>
+                <h3 className="font-semibold text-lg">{t('profile.section.security')}</h3>
               </div>
 
               <Input
-                label="Parola curentă"
+                label={t('profile.field.currentPassword')}
                 type="password"
                 {...passwordForm.register('currentPassword')}
               />
               <Input
-                label="Parola nouă"
+                label={t('profile.field.newPassword')}
                 type="password"
                 {...passwordForm.register('newPassword')}
               />
               <Input
-                label="Confirmă parola nouă"
+                label={t('profile.field.confirmNewPassword')}
                 type="password"
-                placeholder="Repetă parola nouă"
+                placeholder={t('profile.field.confirmNewPasswordPlaceholder')}
               />
               <Button type="submit" className="w-full">
-                Schimbă Parola
+                {t('profile.action.changePassword')}
               </Button>
             </form>
           </CardContent>
@@ -131,25 +131,25 @@ export function ProfilePage() {
         <Card>
           <CardContent>
             <div className="space-y-4">
-              <h3 className="font-medium text-lg">Preferințe Antrenament</h3>
+              <h3 className="font-medium text-lg">{t('profile.section.training')}</h3>
 
               <div>
-                <label htmlFor="pref-fitness-level" className="text-sm mb-2 block">Nivel Fitness</label>
+                <label htmlFor="pref-fitness-level" className="text-sm mb-2 block">{t('profile.field.fitnessLevel')}</label>
                 <select
                   id="pref-fitness-level"
                   className={selectClasses}
                   value={fitnessLevel}
                   onChange={(e) => setFitnessLevel(e.target.value)}
                 >
-                  <option>Începător</option>
-                  <option>Intermediar</option>
-                  <option>Avansat</option>
+                  <option value="beginner">{t('profile.field.fitnessLevel.beginner')}</option>
+                  <option value="intermediate">{t('profile.field.fitnessLevel.intermediate')}</option>
+                  <option value="advanced">{t('profile.field.fitnessLevel.advanced')}</option>
                 </select>
               </div>
 
               <div>
                 <label htmlFor="pref-training-days" className="text-sm mb-2 block">
-                  Zile de Antrenament pe Săptămână
+                  {t('profile.field.trainingDays')}
                 </label>
                 <select
                   id="pref-training-days"
@@ -157,16 +157,17 @@ export function ProfilePage() {
                   value={trainingDays}
                   onChange={(e) => setTrainingDays(e.target.value)}
                 >
-                  <option>3 zile</option>
-                  <option>4 zile</option>
-                  <option>5 zile</option>
-                  <option>6 zile</option>
+                  {[3, 4, 5, 6].map((n) => (
+                    <option key={n} value={String(n)}>
+                      {t('profile.field.trainingDays.option', { count: n })}
+                    </option>
+                  ))}
                 </select>
               </div>
 
               <div>
                 <label htmlFor="pref-max-duration" className="text-sm mb-2 block">
-                  Durata Maximă Sesiune (minute)
+                  {t('profile.field.maxDuration')}
                 </label>
                 <input
                   id="pref-max-duration"
@@ -178,17 +179,17 @@ export function ProfilePage() {
               </div>
 
               <Input
-                label="Note Accidentări (opțional)"
-                placeholder="Accidentări sau limitări..."
+                label={t('profile.field.injuryNotes')}
+                placeholder={t('profile.field.injuryNotes.placeholder')}
                 value={injuryNotes}
                 onChange={(e) => setInjuryNotes(e.target.value)}
               />
 
               <Button
                 className="w-full"
-                onClick={() => toast.success('Preferințele au fost salvate')}
+                onClick={() => toast.success(t('profile.toast.preferencesSaved'))}
               >
-                Salvează Preferințele
+                {t('profile.action.savePreferences')}
               </Button>
             </div>
           </CardContent>
@@ -198,27 +199,27 @@ export function ProfilePage() {
         <Card>
           <CardContent>
             <div className="space-y-4">
-              <h3 className="font-medium text-lg">Preferințe Aplicație</h3>
+              <h3 className="font-medium text-lg">{t('profile.section.app')}</h3>
 
-              {/* Setare Limba */}
+              {/* Language */}
               <div>
-                <label htmlFor="pref-language" className="text-sm mb-2 block">Limba Interfeței</label>
+                <label htmlFor="pref-language" className="text-sm mb-2 block">{t('profile.field.language')}</label>
                 <select
                   id="pref-language"
                   className={selectClasses}
                   value={language}
                   onChange={(e) => setLanguage(e.target.value as 'ro' | 'en')}
                 >
-                  <option value="ro">Română</option>
-                  <option value="en">English</option>
+                  <option value="ro">{t('profile.field.language.ro')}</option>
+                  <option value="en">{t('profile.field.language.en')}</option>
                 </select>
               </div>
 
               <div className="flex items-center justify-between p-3.5 bg-muted/15 rounded-xl border border-border/20 hover:bg-muted/25 transition-all duration-200">
                 <div>
-                  <p className="font-medium">Notificări prin Email</p>
+                  <p className="font-medium">{t('profile.toggle.emailNotifications')}</p>
                   <p className="text-sm text-muted-foreground">
-                    Primește mementouri pentru antrenament
+                    {t('profile.toggle.emailNotifications.desc')}
                   </p>
                 </div>
                 <input
@@ -226,14 +227,15 @@ export function ProfilePage() {
                   checked={emailNotifications}
                   onChange={(e) => setEmailNotifications(e.target.checked)}
                   className="w-4 h-4 accent-primary"
+                  aria-label={t('profile.toggle.emailNotifications')}
                 />
               </div>
 
               <div className="flex items-center justify-between p-3.5 bg-muted/15 rounded-xl border border-border/20 hover:bg-muted/25 transition-all duration-200">
                 <div>
-                  <p className="font-medium">Recomandări AI</p>
+                  <p className="font-medium">{t('profile.toggle.aiRecommendations')}</p>
                   <p className="text-sm text-muted-foreground">
-                    Activează sugestii personalizate
+                    {t('profile.toggle.aiRecommendations.desc')}
                   </p>
                 </div>
                 <input
@@ -241,14 +243,15 @@ export function ProfilePage() {
                   checked={aiRecommendations}
                   onChange={(e) => setAiRecommendations(e.target.checked)}
                   className="w-4 h-4 accent-primary"
+                  aria-label={t('profile.toggle.aiRecommendations')}
                 />
               </div>
 
               <div className="flex items-center justify-between p-3.5 bg-muted/15 rounded-xl border border-border/20 hover:bg-muted/25 transition-all duration-200">
                 <div>
-                  <p className="font-medium">Rezumat Săptămânal</p>
+                  <p className="font-medium">{t('profile.toggle.weeklySummary')}</p>
                   <p className="text-sm text-muted-foreground">
-                    Primește progresul săptămânal pe email
+                    {t('profile.toggle.weeklySummary.desc')}
                   </p>
                 </div>
                 <input
@@ -256,6 +259,7 @@ export function ProfilePage() {
                   checked={weeklySummary}
                   onChange={(e) => setWeeklySummary(e.target.checked)}
                   className="w-4 h-4 accent-primary"
+                  aria-label={t('profile.toggle.weeklySummary')}
                 />
               </div>
             </div>
@@ -263,18 +267,18 @@ export function ProfilePage() {
         </Card>
       </div>
 
-      {/* Logout Area - Scoaterea din Danger Zone */}
+      {/* Logout */}
       <div className="pt-4 flex justify-end">
         <Button
           variant="secondary"
           className="w-full sm:w-auto text-muted-foreground hover:text-foreground border-border hover:bg-muted/50 transition-colors"
           onClick={() => {
             logout();
-            toast.success('Te-ai deconectat cu succes');
+            toast.success(t('auth.logoutSuccess'));
           }}
         >
           <LogOut className="w-4 h-4 mr-2" />
-          Deconectare
+          {t('auth.logout')}
         </Button>
       </div>
     </div>

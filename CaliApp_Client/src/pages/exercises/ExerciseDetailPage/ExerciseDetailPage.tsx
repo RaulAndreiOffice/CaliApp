@@ -10,6 +10,7 @@ import { ConfirmDialog } from '../../../components/common/ConfirmDialog/ConfirmD
 import { ExerciseForm } from '../../../components/exercises/ExerciseForm/ExerciseForm';
 import { ProgressChart } from '../../../components/stats/ProgressChart/ProgressChart';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner/LoadingSpinner';
+import { useLanguage } from '../../../contexts/LanguageContext';
 import {
   useArchiveExercise,
   useExercise,
@@ -24,21 +25,25 @@ export function ExerciseDetailPage() {
   const { data: progress } = useExerciseProgress(id);
   const updateMutation = useUpdateExercise(id ?? '');
   const archiveMutation = useArchiveExercise();
+  const { t } = useLanguage();
   const [editOpen, setEditOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  if (isLoading || !exercise) return <LoadingSpinner label="Se incarca..." />;
+  if (isLoading || !exercise) return <LoadingSpinner label={t('common.loading')} />;
 
   function handleArchive() {
     if (!id) return;
     archiveMutation.mutate(id, {
       onSuccess: () => {
-        toast.success('Exercitiu arhivat');
+        toast.success(t('exercises.detail.archive.toast.success'));
         navigate('/exercises');
       },
-      onError: () => toast.error('Eroare la arhivare'),
+      onError: () => toast.error(t('exercises.detail.archive.toast.failed')),
     });
   }
+
+  const measurementBadgeKey =
+    exercise.measurementType === 'reps' ? 'exercises.filter.reps' : 'exercises.filter.time';
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -49,9 +54,9 @@ export function ExerciseDetailPage() {
             variant="ghost"
             icon={<ArrowLeft size={18} />}
             onClick={() => navigate(-1)}
-            aria-label="Inapoi"
+            aria-label={t('common.back')}
           >
-            Inapoi
+            {t('common.back')}
           </Button>
           <h1 className="text-xl sm:text-3xl font-bold truncate">{exercise.name}</h1>
         </div>
@@ -61,14 +66,14 @@ export function ExerciseDetailPage() {
             icon={<Pencil size={16} />}
             onClick={() => setEditOpen(true)}
           >
-            Edit
+            {t('common.edit')}
           </Button>
           <Button
             variant="danger"
             icon={<Archive size={16} />}
             onClick={() => setConfirmOpen(true)}
           >
-            Arhiveaza
+            {t('exercises.detail.archive')}
           </Button>
         </div>
       </div>
@@ -77,15 +82,18 @@ export function ExerciseDetailPage() {
         <CardContent>
           <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
             <Badge variant={exercise.measurementType === 'reps' ? 'default' : 'info'}>
-              {exercise.measurementType}
+              {t(measurementBadgeKey)}
             </Badge>
             {exercise.category && <span>{exercise.category}</span>}
-            {exercise.defaultSets && exercise.defaultTargetValue && (
+            {exercise.defaultSets && exercise.defaultTargetValue ? (
               <span>
-                Default: {exercise.defaultSets} x {exercise.defaultTargetValue}
-                {exercise.measurementType === 'time' ? 's' : ' rep'}
+                {t('exercises.detail.default', {
+                  sets: exercise.defaultSets,
+                  target: exercise.defaultTargetValue,
+                  unit: exercise.measurementType === 'time' ? t('common.seconds') : ` ${t('common.reps')}`,
+                })}
               </span>
-            )}
+            ) : null}
           </div>
           {exercise.description && (
             <p className="mt-3 text-sm text-muted-foreground">{exercise.description}</p>
@@ -95,7 +103,7 @@ export function ExerciseDetailPage() {
 
       <Card>
         <CardContent>
-          <h3 className="text-lg font-semibold mb-3">Progres</h3>
+          <h3 className="text-lg font-semibold mb-3">{t('exercises.detail.progress')}</h3>
           <ProgressChart
             data={progress?.weeks ?? []}
             measurementType={exercise.measurementType}
@@ -105,7 +113,7 @@ export function ExerciseDetailPage() {
 
       <Dialog
         open={editOpen}
-        title="Editeaza exercitiu"
+        title={t('exercises.detail.editDialog.title')}
         onClose={() => setEditOpen(false)}
       >
         <ExerciseForm
@@ -118,14 +126,14 @@ export function ExerciseDetailPage() {
             defaultTargetValue: exercise.defaultTargetValue ?? undefined,
             defaultRestSeconds: exercise.defaultRestSeconds ?? undefined,
           }}
-          onSubmit={(data) =>
-            updateMutation.mutate(data, {
+          onSubmit={(payload) =>
+            updateMutation.mutate(payload, {
               onSuccess: () => {
-                toast.success('Exercitiu actualizat');
+                toast.success(t('exercises.detail.update.toast.success'));
                 setEditOpen(false);
                 navigate(-1);
               },
-              onError: () => toast.error('Eroare la actualizare'),
+              onError: () => toast.error(t('exercises.detail.update.toast.failed')),
             })
           }
           onCancel={() => setEditOpen(false)}
@@ -135,10 +143,10 @@ export function ExerciseDetailPage() {
 
       <ConfirmDialog
         open={confirmOpen}
-        title="Arhivezi acest exercitiu?"
-        description="Va disparea din lista. Istoricul ramane intact."
+        title={t('exercises.detail.archiveConfirm.title')}
+        description={t('exercises.detail.archiveConfirm.desc')}
         variant="danger"
-        confirmLabel="Arhiveaza"
+        confirmLabel={t('exercises.detail.archive')}
         onConfirm={() => {
           setConfirmOpen(false);
           handleArchive();

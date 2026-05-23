@@ -7,6 +7,7 @@ import {
 import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
 import { Button } from '../../ui/Button';
+import { useLanguage } from '../../../contexts/LanguageContext';
 
 interface ExerciseFormProps {
   defaultValues?: Partial<CreateExerciseInput>;
@@ -20,9 +21,10 @@ export function ExerciseForm({
   defaultValues,
   onSubmit,
   onCancel,
-  submitLabel = 'Salveaza',
+  submitLabel,
   loading,
 }: ExerciseFormProps) {
+  const { t } = useLanguage();
   const {
     register,
     handleSubmit,
@@ -38,43 +40,43 @@ export function ExerciseForm({
   return (
     <form className="flex flex-col gap-3" onSubmit={handleSubmit(onSubmit)}>
       <Input
-        label="Nume exercitiu"
-        placeholder="ex: Push Up"
+        label={t('exercises.form.name')}
+        placeholder={t('exercises.form.namePlaceholder')}
         error={errors.name?.message}
         {...register('name')}
       />
       <Select
-        label="Tip masurare"
+        label={t('exercises.form.measurementType')}
         options={[
-          { value: 'reps', label: 'Repetari (reps)' },
-          { value: 'time', label: 'Timp (secunde)' },
+          { value: 'reps', label: t('exercises.form.measurementType.reps') },
+          { value: 'time', label: t('exercises.form.measurementType.time') },
         ]}
         error={errors.measurementType?.message}
         {...register('measurementType')}
       />
       <Input
-        label="Categorie"
-        placeholder="ex: piept, spate"
+        label={t('exercises.form.category')}
+        placeholder={t('exercises.form.categoryPlaceholder')}
         error={errors.category?.message}
         {...register('category')}
       />
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Input
-          label="Serii default"
+          label={t('exercises.form.defaultSets')}
           type="number"
           min={1}
           error={errors.defaultSets?.message}
           {...register('defaultSets', { valueAsNumber: true })}
         />
         <Input
-          label="Target default"
+          label={t('exercises.form.defaultTargetValue')}
           type="number"
           min={1}
           error={errors.defaultTargetValue?.message}
           {...register('defaultTargetValue', { valueAsNumber: true })}
         />
         <Input
-          label="Pauza (s)"
+          label={t('exercises.form.defaultRestSeconds')}
           type="number"
           min={0}
           error={errors.defaultRestSeconds?.message}
@@ -82,18 +84,18 @@ export function ExerciseForm({
         />
       </div>
       <Input
-        label="Descriere (optional)"
+        label={t('exercises.form.descriptionOptional')}
         error={errors.description?.message}
         {...register('description')}
       />
       <div className="sticky bottom-0 z-10 -mx-4 sm:-mx-6 mt-2 flex justify-end gap-2 border-t border-border/30 bg-card/95 px-4 sm:px-6 py-3 backdrop-blur">
         {onCancel && (
           <Button type="button" variant="secondary" onClick={onCancel}>
-            Anuleaza
+            {t('common.cancel')}
           </Button>
         )}
         <Button type="submit" loading={loading}>
-          {submitLabel}
+          {submitLabel ?? t('common.save')}
         </Button>
       </div>
     </form>
