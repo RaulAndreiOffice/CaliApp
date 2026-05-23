@@ -43,7 +43,7 @@ export function ExerciseDetailPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 min-w-0">
           <Button
             type="button"
             variant="ghost"
@@ -53,7 +53,7 @@ export function ExerciseDetailPage() {
           >
             Inapoi
           </Button>
-          <h1 className="text-2xl sm:text-3xl font-bold">{exercise.name}</h1>
+          <h1 className="text-xl sm:text-3xl font-bold truncate">{exercise.name}</h1>
         </div>
         <div className="flex gap-2 w-full sm:w-auto">
           <Button

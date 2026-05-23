@@ -38,10 +38,10 @@ export function WorkoutTableDetailPage() {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">{table.name}</h1>
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-3xl font-bold truncate">{table.name}</h1>
           {table.description && (
-            <p className="text-sm sm:text-base text-muted-foreground mt-1">{table.description}</p>
+            <p className="text-xs sm:text-base text-muted-foreground mt-1 line-clamp-2">{table.description}</p>
           )}
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">

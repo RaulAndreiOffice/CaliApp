@@ -1,4 +1,4 @@
-import { Moon } from 'lucide-react';
+import { Moon, Info } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -115,7 +115,13 @@ export function ProgressDashboardSection({
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card>
           <CardContent className="pt-3 sm:pt-4">
-            <p className="text-xs sm:text-sm text-muted-foreground">Serii grele</p>
+            <div className="flex items-center gap-1.5 group relative w-fit">
+              <p className="text-xs sm:text-sm text-muted-foreground">Serii grele</p>
+              <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
+              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] text-foreground font-normal z-50 pointer-events-none">
+                Seturi duse aproape de epuizare. Momentan bazat doar pe cele bifate complet.
+              </div>
+            </div>
             <p className="text-xl sm:text-3xl font-bold text-primary">
               {currentWeek?.hardSets ?? 0}
             </p>
@@ -124,7 +130,13 @@ export function ProgressDashboardSection({
         </Card>
         <Card>
           <CardContent className="pt-3 sm:pt-4">
-            <p className="text-xs sm:text-sm text-muted-foreground">Volum echiv.</p>
+            <div className="flex items-center gap-1.5 group relative w-fit">
+              <p className="text-xs sm:text-sm text-muted-foreground">Volum echiv.</p>
+              <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
+              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-56 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] text-foreground font-normal z-50 pointer-events-none">
+                Formulă: 1 repetare = 1 punct, 1 secundă = 0.5 puncte.
+              </div>
+            </div>
             <p className="text-xl sm:text-3xl font-bold">
               {formatNumber(currentWeek?.equivalentReps ?? 0)}
             </p>
@@ -133,7 +145,13 @@ export function ProgressDashboardSection({
         </Card>
         <Card>
           <CardContent className="pt-3 sm:pt-4">
-            <p className="text-xs sm:text-sm text-muted-foreground">ACWR</p>
+            <div className="flex items-center gap-1.5 group relative w-fit">
+              <p className="text-xs sm:text-sm text-muted-foreground">ACWR</p>
+              <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
+              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-56 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] text-foreground font-normal z-50 pointer-events-none">
+                Acute:Chronic Workload Ratio. Compară volumul actual cu media lunară. &gt;1.5 crește riscul de accidentare.
+              </div>
+            </div>
             <p className="text-xl sm:text-3xl font-bold">
               {currentWeek?.acwr?.toFixed(2) ?? '-'}
             </p>
@@ -142,7 +160,13 @@ export function ProgressDashboardSection({
         </Card>
         <Card>
           <CardContent className="pt-3 sm:pt-4">
-            <p className="text-xs sm:text-sm text-muted-foreground">Push/Pull</p>
+            <div className="flex items-center gap-1.5 group relative w-fit">
+              <p className="text-xs sm:text-sm text-muted-foreground">Push/Pull</p>
+              <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
+              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] text-foreground font-normal z-50 pointer-events-none">
+                Ideal aproape de 1:1. Un dezechilibru major poate crea probleme articulare.
+              </div>
+            </div>
             <p className="text-xl sm:text-3xl font-bold">
               {balance?.pushPullRatio?.toFixed(2) ?? '-'}
             </p>
