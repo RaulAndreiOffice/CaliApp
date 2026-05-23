@@ -1,17 +1,48 @@
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Clock, Calendar } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { ArrowLeft, Clock, Calendar, Pencil, Trash2, X } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
+import { Dialog } from '../../../components/ui/Dialog';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner/LoadingSpinner';
 import { EmptyState } from '../../../components/common/EmptyState/EmptyState';
-import { useWorkoutSession } from '../../../hooks/api/useWorkoutSessions';
+import {
+  useDeleteSession,
+  useUpdateSession,
+  useWorkoutSession,
+} from '../../../hooks/api/useWorkoutSessions';
+import { useDeleteSet, useUpdateSet } from '../../../hooks/api/usePerformedSets';
+import { useWorkoutStore } from '../../../stores/workout.store';
 import { formatDate } from '../../../utils/formatters';
+
+type EditingCell = { rowId: string; setId: string } | null;
 
 export function WorkoutSessionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { data: session, isLoading } = useWorkoutSession(id);
+  const deleteSession = useDeleteSession();
+  const updateSession = useUpdateSession();
+  const activeSessionId = useWorkoutStore((s) => s.activeSessionId);
+  const endWorkoutInStore = useWorkoutStore((s) => s.endSession);
+
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [notesValue, setNotesValue] = useState('');
+  const [editingCell, setEditingCell] = useState<EditingCell>(null);
+  const [inputValue, setInputValue] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingCell) {
+      setTimeout(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }, 10);
+    }
+  }, [editingCell]);
 
   if (isLoading) return <LoadingSpinner label="Se incarca sesiunea..." />;
 
@@ -30,6 +61,7 @@ export function WorkoutSessionDetailPage() {
     );
   }
 
+  const sessionId = session.id;
   const rows = session.rows ?? [];
   const totalSets = rows.reduce(
     (acc, r) => acc + (r.performedSets?.length ?? 0),
@@ -49,6 +81,35 @@ export function WorkoutSessionDetailPage() {
           60000,
       )
     : null;
+
+  const openNotes = () => {
+    setNotesValue(session.notes ?? '');
+    setNotesOpen(true);
+  };
+
+  const saveNotes = () => {
+    updateSession.mutate(
+      { id: sessionId, data: { notes: notesValue } },
+      {
+        onSuccess: () => {
+          toast.success('Notite salvate');
+          setNotesOpen(false);
+        },
+        onError: () => toast.error('Nu am putut salva notitele'),
+      },
+    );
+  };
+
+  const handleDeleteSession = () => {
+    deleteSession.mutate(sessionId, {
+      onSuccess: () => {
+        if (activeSessionId === sessionId) endWorkoutInStore();
+        toast.success('Sesiune stearsa');
+        navigate('/workout-sessions');
+      },
+      onError: () => toast.error('Nu am putut sterge sesiunea'),
+    });
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -73,18 +134,35 @@ export function WorkoutSessionDetailPage() {
             </p>
           )}
         </div>
-        <Badge
-          variant={
-            session.status === 'completed'
-              ? 'success'
-              : session.status === 'started'
-                ? 'info'
-                : 'danger'
-          }
-          className="shrink-0"
-        >
-          {session.status}
-        </Badge>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <Badge
+            variant={
+              session.status === 'completed'
+                ? 'success'
+                : session.status === 'started'
+                  ? 'info'
+                  : 'danger'
+            }
+          >
+            {session.status}
+          </Badge>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Pencil size={14} />}
+            onClick={openNotes}
+          >
+            Notite
+          </Button>
+          <Button
+            variant="danger"
+            size="sm"
+            icon={<Trash2 size={14} />}
+            onClick={() => setConfirmDeleteOpen(true)}
+          >
+            Sterge
+          </Button>
+        </div>
       </div>
 
       {/* Stats cards */}
@@ -181,22 +259,30 @@ export function WorkoutSessionDetailPage() {
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
                     {sets.map((set) => (
-                      <div
+                      <PerformedSetCell
                         key={set.id}
-                        className="p-2.5 sm:p-3 bg-muted/30 rounded-lg text-center"
-                      >
-                        <p className="text-xs text-muted-foreground mb-0.5">
-                          Set {set.setNumber}
-                        </p>
-                        <p className="text-base sm:text-lg font-bold text-primary">
-                          {set.actualValue}
-                          {unitShort && (
-                            <span className="text-xs ml-0.5">
-                              {unitShort}
-                            </span>
-                          )}
-                        </p>
-                      </div>
+                        sessionId={sessionId}
+                        rowId={row.id}
+                        setId={set.id}
+                        setNumber={set.setNumber}
+                        value={set.actualValue}
+                        unitShort={unitShort}
+                        isEditing={
+                          editingCell?.rowId === row.id &&
+                          editingCell?.setId === set.id
+                        }
+                        inputValue={inputValue}
+                        setInputValue={setInputValue}
+                        inputRef={inputRef}
+                        startEdit={() => {
+                          setEditingCell({ rowId: row.id, setId: set.id });
+                          setInputValue(String(set.actualValue));
+                        }}
+                        endEdit={() => {
+                          setEditingCell(null);
+                          setInputValue('');
+                        }}
+                      />
                     ))}
                   </div>
 
@@ -218,6 +304,174 @@ export function WorkoutSessionDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog
+        open={confirmDeleteOpen}
+        title="Sterge sesiunea?"
+        onClose={() =>
+          deleteSession.isPending ? undefined : setConfirmDeleteOpen(false)
+        }
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setConfirmDeleteOpen(false)}
+              disabled={deleteSession.isPending}
+            >
+              Anuleaza
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleDeleteSession}
+              loading={deleteSession.isPending}
+            >
+              Sterge
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Aceasta actiune este permanenta. Setarile, exercitiile si seriile efectuate vor fi sterse.
+        </p>
+      </Dialog>
+
+      <Dialog
+        open={notesOpen}
+        title="Editeaza notitele"
+        onClose={() => (updateSession.isPending ? undefined : setNotesOpen(false))}
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setNotesOpen(false)}
+              disabled={updateSession.isPending}
+            >
+              Anuleaza
+            </Button>
+            <Button
+              size="sm"
+              onClick={saveNotes}
+              loading={updateSession.isPending}
+            >
+              Salveaza
+            </Button>
+          </>
+        }
+      >
+        <textarea
+          value={notesValue}
+          onChange={(e) => setNotesValue(e.target.value)}
+          rows={5}
+          placeholder="Cum a fost antrenamentul?"
+          className="w-full bg-muted/40 border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+        />
+      </Dialog>
+    </div>
+  );
+}
+
+interface PerformedSetCellProps {
+  sessionId: string;
+  rowId: string;
+  setId: string;
+  setNumber: number;
+  value: number;
+  unitShort: string;
+  isEditing: boolean;
+  inputValue: string;
+  setInputValue: (v: string) => void;
+  inputRef: React.RefObject<HTMLInputElement>;
+  startEdit: () => void;
+  endEdit: () => void;
+}
+
+function PerformedSetCell({
+  sessionId,
+  rowId,
+  setId,
+  setNumber,
+  value,
+  unitShort,
+  isEditing,
+  inputValue,
+  setInputValue,
+  inputRef,
+  startEdit,
+  endEdit,
+}: PerformedSetCellProps) {
+  const updateSet = useUpdateSet(sessionId, rowId, setId);
+  const deleteSet = useDeleteSet(sessionId, rowId);
+
+  const commit = (raw: string) => {
+    const num = Number.parseInt(raw, 10);
+    if (Number.isNaN(num) || num < 0 || num === value) {
+      endEdit();
+      return;
+    }
+    updateSet.mutate(
+      { actualValue: num },
+      {
+        onSuccess: () => endEdit(),
+        onError: () => {
+          toast.error('Nu am putut actualiza seria');
+          endEdit();
+        },
+      },
+    );
+  };
+
+  const remove = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    deleteSet.mutate(setId, {
+      onSuccess: () => toast.success('Serie stearsa'),
+      onError: () => toast.error('Nu am putut sterge seria'),
+    });
+  };
+
+  return (
+    <div className="relative p-2.5 sm:p-3 bg-muted/30 rounded-lg text-center group">
+      <p className="text-xs text-muted-foreground mb-0.5">
+        Set {setNumber}
+      </p>
+      {isEditing ? (
+        <input
+          ref={inputRef}
+          type="number"
+          inputMode="numeric"
+          min={0}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit(inputValue);
+            if (e.key === 'Escape') endEdit();
+          }}
+          onBlur={() => commit(inputValue)}
+          className="w-full h-9 text-center bg-primary/10 border border-primary rounded-md text-base sm:text-lg font-bold focus:outline-none focus:ring-1 focus:ring-primary text-primary"
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={startEdit}
+          className="w-full text-base sm:text-lg font-bold text-primary hover:underline"
+          title="Editeaza valoarea"
+        >
+          {value}
+          {unitShort && <span className="text-xs ml-0.5">{unitShort}</span>}
+        </button>
+      )}
+      <button
+        type="button"
+        onClick={remove}
+        disabled={deleteSet.isPending}
+        className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-muted text-muted-foreground hover:bg-destructive hover:text-destructive-foreground transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-40"
+        title="Sterge seria"
+        aria-label={`Sterge set ${setNumber}`}
+      >
+        <X className="w-3 h-3" />
+      </button>
     </div>
   );
 }

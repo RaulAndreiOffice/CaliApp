@@ -1,13 +1,20 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Moon } from 'lucide-react';
+import { Moon, Trash2 } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
+import { Button } from '../../../components/ui/Button';
+import { Dialog } from '../../../components/ui/Dialog';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner/LoadingSpinner';
 import { EmptyState } from '../../../components/common/EmptyState/EmptyState';
 import { Pagination } from '../../../components/common/Pagination/Pagination';
-import { useLogRestDay, useWorkoutSessions } from '../../../hooks/api/useWorkoutSessions';
+import {
+  useDeleteSession,
+  useLogRestDay,
+  useWorkoutSessions,
+} from '../../../hooks/api/useWorkoutSessions';
+import { useWorkoutStore } from '../../../stores/workout.store';
 import { formatDate } from '../../../utils/formatters';
 import type { WorkoutSessionStatus } from '../../../types/workoutSession.types';
 
@@ -31,6 +38,23 @@ export function WorkoutSessionsPage() {
   const limit = 20;
   const { data, isLoading } = useWorkoutSessions(page, limit);
   const logRestDay = useLogRestDay();
+  const deleteSession = useDeleteSession();
+  const activeSessionId = useWorkoutStore((s) => s.activeSessionId);
+  const endWorkoutInStore = useWorkoutStore((s) => s.endSession);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  const confirmDelete = () => {
+    if (!pendingDeleteId) return;
+    const id = pendingDeleteId;
+    deleteSession.mutate(id, {
+      onSuccess: () => {
+        if (activeSessionId === id) endWorkoutInStore();
+        toast.success('Sesiune stearsa');
+        setPendingDeleteId(null);
+      },
+      onError: () => toast.error('Nu am putut sterge sesiunea'),
+    });
+  };
 
   const totalPages = data ? Math.ceil(data.meta.total / data.meta.limit) : 1;
 
@@ -127,14 +151,28 @@ export function WorkoutSessionsPage() {
                           </p>
                         )}
                       </div>
-                      {duration !== null && (
-                        <div className="text-left sm:text-right shrink-0">
-                          <p className="text-xs sm:text-sm text-muted-foreground">
-                            Duration
-                          </p>
-                          <p className="font-medium">{duration} min</p>
-                        </div>
-                      )}
+                      <div className="flex items-start gap-2 shrink-0">
+                        {duration !== null && (
+                          <div className="text-left sm:text-right">
+                            <p className="text-xs sm:text-sm text-muted-foreground">
+                              Duration
+                            </p>
+                            <p className="font-medium">{duration} min</p>
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPendingDeleteId(session.id);
+                          }}
+                          className="min-w-[36px] min-h-[36px] flex items-center justify-center rounded-lg bg-muted text-muted-foreground hover:bg-destructive/15 hover:text-destructive transition-colors"
+                          title="Sterge sesiunea"
+                          aria-label="Sterge sesiunea"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Exercise breakdowns */}
@@ -201,6 +239,36 @@ export function WorkoutSessionsPage() {
           />
         </>
       )}
+
+      <Dialog
+        open={!!pendingDeleteId}
+        title="Sterge sesiunea?"
+        onClose={() => (deleteSession.isPending ? undefined : setPendingDeleteId(null))}
+        footer={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setPendingDeleteId(null)}
+              disabled={deleteSession.isPending}
+            >
+              Anuleaza
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={confirmDelete}
+              loading={deleteSession.isPending}
+            >
+              Sterge
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-muted-foreground">
+          Aceasta actiune este permanenta. Setarile, exercitiile si seriile efectuate vor fi sterse.
+        </p>
+      </Dialog>
     </div>
   );
 }

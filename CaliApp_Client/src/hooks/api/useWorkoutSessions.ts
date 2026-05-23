@@ -1,7 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { workoutSessionApi } from '../../api/workoutSession.api';
 import { QUERY_KEYS } from '../../utils/constants';
-import type { LogRestDayRequest, StartSessionRequest } from '../../types/workoutSession.types';
+import type {
+  LogRestDayRequest,
+  StartSessionRequest,
+  UpdateSessionRequest,
+} from '../../types/workoutSession.types';
 
 export function useWorkoutSessions(page = 1, limit = 20) {
   return useQuery({
@@ -24,6 +28,18 @@ export function useStartSession() {
     mutationFn: (data: StartSessionRequest) => workoutSessionApi.start(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: QUERY_KEYS.WORKOUT_SESSIONS });
+    },
+  });
+}
+
+export function useUpdateSession() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateSessionRequest }) =>
+      workoutSessionApi.update(id, data),
+    onSuccess: (_, { id }) => {
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.WORKOUT_SESSIONS });
+      qc.invalidateQueries({ queryKey: QUERY_KEYS.WORKOUT_SESSION(id) });
     },
   });
 }
