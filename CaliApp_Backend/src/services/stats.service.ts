@@ -6,12 +6,19 @@ import type {
   CategoryTrainingLoadDTO,
   DailyTrainingLoadPointDTO,
   ExerciseDistributionDTO,
+  LearningStateDTO,
   PushPullBalanceDTO,
   TrainingLoadDashboardDTO,
   TrainingLoadZone,
   TrainingRecommendationDTO,
   WeeklyTrainingLoadPointDTO,
 } from "../dtos/stats/training-load-dashboard.dto";
+
+// Recommendations need a baseline of how the user normally trains before we
+// can flag outliers like spikes or MRV-risk; without this gate, anyone in
+// their first week sees scary warnings off a single workout.
+const LEARNING_MIN_DAYS = 10;
+const LEARNING_MIN_SESSIONS = 3;
 
 interface DashboardOverviewDTO {
   totalSessions: number;
@@ -289,7 +296,7 @@ export const statsService = {
     const firstWeek = addDays(currentWeek, -(safeWeeks - 1) * 7);
     const end = addDays(currentWeek, 7);
 
-    const [sessions, restDaysThisWeek] = await Promise.all([
+    const [sessions, restDaysThisWeek, historyStats] = await Promise.all([
       getCompletedSessionsInRange(userId, firstWeek, end),
       prisma.workoutSession.count({
         where: {
@@ -298,7 +305,31 @@ export const statsService = {
           startedAt: { gte: currentWeek, lt: addDays(currentWeek, 7) },
         },
       }),
+      prisma.workoutSession.aggregate({
+        where: { userId, status: "completed" },
+        _count: { _all: true },
+        _min: { startedAt: true },
+      }),
     ]);
+
+    const firstCompletedAt = historyStats._min.startedAt ?? null;
+    const completedSessions = historyStats._count._all;
+    const daysOfHistory = firstCompletedAt
+      ? Math.floor((Date.now() - firstCompletedAt.getTime()) / (24 * 60 * 60 * 1000))
+      : 0;
+    const isLearning =
+      !firstCompletedAt ||
+      daysOfHistory < LEARNING_MIN_DAYS ||
+      completedSessions < LEARNING_MIN_SESSIONS;
+
+    const learningState: LearningStateDTO = {
+      firstCompletedAt,
+      daysOfHistory,
+      completedSessions,
+      isLearning,
+      minDays: LEARNING_MIN_DAYS,
+      minSessions: LEARNING_MIN_SESSIONS,
+    };
 
     const weekly = Array.from({ length: safeWeeks }, (_, index) => {
       const weekStart = addDays(firstWeek, index * 7);
@@ -408,6 +439,12 @@ export const statsService = {
           : previousFour.reduce((sum, item) => sum + item.hardSets, 0) / previousFour.length;
       const previousWeek = weekly[index - 1];
       const acwr = previousAverage > 0 ? point.hardSets / previousAverage : null;
+      // Spike comparisons against a tiny history are noise. Only flag a spike
+      // once the user has cleared the learning threshold AND the previous
+      // window actually contains real volume to compare against.
+      const rawSpike =
+        (acwr !== null && acwr > 1.5) ||
+        (previousWeek ? point.hardSets - previousWeek.hardSets > 3 : false);
 
       return {
         ...point,
@@ -415,7 +452,7 @@ export const statsService = {
         equivalentReps: Math.round(point.equivalentReps),
         acwr: acwr === null ? null : Number(acwr.toFixed(2)),
         zone: getVolumeZone(point.hardSets),
-        spike: (acwr !== null && acwr > 1.5) || (previousWeek ? point.hardSets - previousWeek.hardSets > 3 : false),
+        spike: isLearning ? false : rawSpike,
       };
     });
 
@@ -456,52 +493,64 @@ export const statsService = {
     const currentWeekPoint = weeklyTrend[weeklyTrend.length - 1];
     const recommendations: TrainingRecommendationDTO[] = [];
 
-    if (currentWeekPoint?.zone === "below-mv") {
+    if (isLearning) {
+      // During the learning window we hide every warning/danger card and
+      // surface a single info note so the user understands why the engine
+      // hasn't started flagging things yet.
       recommendations.push({
         severity: "info",
-        title: "Volum sub MV",
-        message: "Saptamana curenta este sub volumul de mentinere. E ok pentru pauza, dar nu pentru progres.",
+        title: "Inca invatam ritmul tau",
+        message:
+          "Dupa 7-10 zile de antrenamente logate, recomandarile vor evidentia abaterile reale fata de stilul tau.",
       });
-    }
+    } else {
+      if (currentWeekPoint?.zone === "below-mv") {
+        recommendations.push({
+          severity: "info",
+          title: "Volum sub MV",
+          message: "Saptamana curenta este sub volumul de mentinere. E ok pentru pauza, dar nu pentru progres.",
+        });
+      }
 
-    if (currentWeekPoint?.zone === "mrv-risk") {
-      recommendations.push({
-        severity: "danger",
-        title: "Risc MRV",
-        message: "Volumul trece peste zona MAV. Ia in calcul deload sau imparte seturile pe mai multe zile.",
-      });
-    }
+      if (currentWeekPoint?.zone === "mrv-risk") {
+        recommendations.push({
+          severity: "danger",
+          title: "Risc MRV",
+          message: "Volumul trece peste zona MAV. Ia in calcul deload sau imparte seturile pe mai multe zile.",
+        });
+      }
 
-    if (currentWeekPoint?.spike) {
-      recommendations.push({
-        severity: "warning",
-        title: "Spike de volum",
-        message: "Cresterea fata de istoricul recent este abrupta. Progresia recomandata este de 1-3 serii pe saptamana.",
-      });
-    }
+      if (currentWeekPoint?.spike) {
+        recommendations.push({
+          severity: "warning",
+          title: "Spike de volum",
+          message: "Cresterea fata de istoricul recent este abrupta. Progresia recomandata este de 1-3 serii pe saptamana.",
+        });
+      }
 
-    if (pushPullBalance.status === "push-heavy") {
-      recommendations.push({
-        severity: "warning",
-        title: "Push/Pull dezechilibrat",
-        message: "Ai semnificativ mai multe seturi de impins decat de tras. Pentru umeri sanatosi, apropie raportul de 1:1.",
-      });
-    }
+      if (pushPullBalance.status === "push-heavy") {
+        recommendations.push({
+          severity: "warning",
+          title: "Push/Pull dezechilibrat",
+          message: "Ai semnificativ mai multe seturi de impins decat de tras. Pentru umeri sanatosi, apropie raportul de 1:1.",
+        });
+      }
 
-    if (pushPullBalance.status === "pull-heavy") {
-      recommendations.push({
-        severity: "info",
-        title: "Pull dominant",
-        message: "Ai mai mult volum de tras decat de impins. Poate fi intentionat, dar verifica echilibrul planului.",
-      });
-    }
+      if (pushPullBalance.status === "pull-heavy") {
+        recommendations.push({
+          severity: "info",
+          title: "Pull dominant",
+          message: "Ai mai mult volum de tras decat de impins. Poate fi intentionat, dar verifica echilibrul planului.",
+        });
+      }
 
-    if (recommendations.length === 0) {
-      recommendations.push({
-        severity: "info",
-        title: "Zona buna",
-        message: "Volumul curent arata controlat. Pentru analiza mai precisa, urmatorul pas este logarea RIR/RPE pe set.",
-      });
+      if (recommendations.length === 0) {
+        recommendations.push({
+          severity: "info",
+          title: "Zona buna",
+          message: "Volumul curent arata controlat. Pentru analiza mai precisa, urmatorul pas este logarea RIR/RPE pe set.",
+        });
+      }
     }
 
     return {
@@ -523,6 +572,7 @@ export const statsService = {
       pushPullBalance,
       recommendations,
       restDaysThisWeek,
+      learningState,
     };
   },
 };

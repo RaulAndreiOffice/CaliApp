@@ -63,6 +63,18 @@ export interface TrainingRecommendationDTO {
   message: string;
 }
 
+// Tracks how much history the user has accumulated so the frontend can show a
+// learning-period notice and the backend can suppress noisy warnings until
+// there are enough sessions to spot real outliers.
+export interface LearningStateDTO {
+  firstCompletedAt: Date | null;
+  daysOfHistory: number;
+  completedSessions: number;
+  isLearning: boolean;
+  minDays: number;
+  minSessions: number;
+}
+
 export interface TrainingLoadDashboardDTO {
   landmarks: VolumeLandmarksDTO;
   weeklyTrend: WeeklyTrainingLoadPointDTO[];
@@ -72,4 +84,5 @@ export interface TrainingLoadDashboardDTO {
   pushPullBalance: PushPullBalanceDTO;
   recommendations: TrainingRecommendationDTO[];
   restDaysThisWeek: number;
+  learningState: LearningStateDTO;
 }

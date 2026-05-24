@@ -78,21 +78,42 @@ export function PlansBoard() {
   const [editingCell, setEditingCell] = useState<EditingCell>(null);
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
 
   // While a workout is active, force the selected tab to the active table.
   const selectedId = isActive && activeTableId ? activeTableId : selectedIdLocal;
 
   // Sort plans so the active workout's plan is always first in the tab bar.
+  // Depend on activeTableId (Zustand, instant) rather than isActive (gated by
+  // the useWorkoutSession staleness check) so the reorder is visible the
+  // moment Start succeeds, not after the session query resolves.
   const sortedTables = useMemo(() => {
     if (!tables) return tables;
-    if (!isActive || !activeTableId) return tables;
+    if (!activeTableId) return tables;
     const idx = tables.findIndex((t) => t.id === activeTableId);
     if (idx <= 0) return tables;
     const next = [...tables];
     const [active] = next.splice(idx, 1);
     next.unshift(active);
     return next;
-  }, [tables, isActive, activeTableId]);
+  }, [tables, activeTableId]);
+
+  // After Start (or when the active plan changes), scroll the tab bar back to
+  // the start so the user actually sees the active plan in the first slot —
+  // overflow-x-auto preserves scrollLeft across re-renders, so without this
+  // someone who started from a tab on the right would still be looking at
+  // the right edge and miss that the reorder happened.
+  useEffect(() => {
+    if (!activeTableId) return;
+    tabsRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
+  }, [activeTableId]);
+
+  // Keep the locally-selected plan in sync with the active one so Reset/end
+  // doesn't snap the view back to whatever plan the user was browsing before
+  // they pressed Start.
+  useEffect(() => {
+    if (activeTableId) setSelectedIdLocal(activeTableId);
+  }, [activeTableId]);
 
   const activeSelectedId = selectedId || sortedTables?.[0]?.id || '';
   const selectedPlanSummary: WorkoutTable | undefined = sortedTables?.find(
@@ -208,7 +229,10 @@ export function PlansBoard() {
   return (
     <div className="space-y-3">
       {/* Plan tabs — horizontal scroll, larger touch targets */}
-      <div className="-mx-1 px-1 flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1">
+      <div
+        ref={tabsRef}
+        className="-mx-1 px-1 flex items-center gap-2 overflow-x-auto scrollbar-hide pb-1"
+      >
         {(sortedTables ?? tables).map((plan) => (
           <button
             key={plan.id}

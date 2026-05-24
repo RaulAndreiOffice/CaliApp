@@ -493,6 +493,12 @@ export const ro = {
   'sharing.dialog.toast.sent': 'Plan trimis!',
   'sharing.dialog.toast.sendFailed': 'Trimiterea a eșuat',
 
+  // ───── ai coach (work in progress placeholder)
+  'aiCoach.title': 'AI Coach',
+  'aiCoach.heading': 'AI Coach este încă în lucru.',
+  'aiCoach.subtitle': 'Lucrăm la un asistent care îți va analiza istoricul și îți va sugera planuri.',
+  'aiCoach.back': 'Înapoi la dashboard',
+
   // ───── generic errors
   'error.generic': 'A apărut o eroare. Încearcă din nou.',
   'error.network': 'Probleme de rețea',
@@ -986,6 +992,12 @@ export const en: Record<keyof typeof ro, string> = {
   'sharing.dialog.shareTitle': 'Share plan',
   'sharing.dialog.toast.sent': 'Plan sent!',
   'sharing.dialog.toast.sendFailed': 'Failed to send',
+
+  // ───── ai coach (work in progress placeholder)
+  'aiCoach.title': 'AI Coach',
+  'aiCoach.heading': 'AI Coach is still in progress.',
+  'aiCoach.subtitle': "We're building an assistant that will analyze your history and suggest plans.",
+  'aiCoach.back': 'Back to dashboard',
 
   // ───── generic errors
   'error.generic': 'Something went wrong. Try again.',

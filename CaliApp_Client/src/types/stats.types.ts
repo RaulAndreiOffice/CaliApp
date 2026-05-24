@@ -108,6 +108,15 @@ export interface TrainingRecommendation {
   message: string;
 }
 
+export interface LearningState {
+  firstCompletedAt: string | null;
+  daysOfHistory: number;
+  completedSessions: number;
+  isLearning: boolean;
+  minDays: number;
+  minSessions: number;
+}
+
 export interface TrainingLoadDashboard {
   landmarks: VolumeLandmarks;
   weeklyTrend: WeeklyTrainingLoadPoint[];
@@ -117,4 +126,5 @@ export interface TrainingLoadDashboard {
   pushPullBalance: PushPullBalance;
   recommendations: TrainingRecommendation[];
   restDaysThisWeek: number;
+  learningState: LearningState;
 }

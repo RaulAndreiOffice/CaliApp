@@ -20,6 +20,7 @@ import { WorkoutSessionDetailPage } from './pages/workout-sessions/WorkoutSessio
 import { SharedWithMePage } from './pages/sharing/SharedWithMePage/SharedWithMePage';
 import { StatsPage } from './pages/stats/StatsPage/StatsPage';
 import { ProfilePage } from './pages/profile/ProfilePage/ProfilePage';
+import { AiCoachPage } from './pages/ai-coach/AiCoachPage';
 
 function AppRoutes() {
   return (
@@ -50,6 +51,7 @@ function AppRoutes() {
           <Route path="/workout-sessions/:id" element={<WorkoutSessionDetailPage />} />
           <Route path="/shared-with-me" element={<SharedWithMePage />} />
           <Route path="/stats" element={<StatsPage />} />
+          <Route path="/ai-coach" element={<AiCoachPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Route>
 
