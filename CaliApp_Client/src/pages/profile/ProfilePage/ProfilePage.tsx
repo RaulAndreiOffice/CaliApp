@@ -8,6 +8,7 @@ import { Button } from '../../../components/ui/Button';
 import { useAuthStore } from '../../../stores/auth.store';
 import { userApi } from '../../../api/user.api';
 import { useLanguage } from '../../../contexts/LanguageContext';
+import { getServerErrorMessage } from '../../../utils/errors';
 import type { ChangePasswordRequest, UpdateUserRequest } from '../../../types/user.types';
 
 export function ProfilePage() {
@@ -37,8 +38,8 @@ export function ProfilePage() {
       const updated = await userApi.updateMe(data);
       updateUser(updated);
       toast.success(t('profile.toast.profileUpdated'));
-    } catch {
-      toast.error(t('profile.toast.profileUpdateFailed'));
+    } catch (err) {
+      toast.error(getServerErrorMessage(err, t('profile.toast.profileUpdateFailed')));
     }
   }
 
@@ -47,8 +48,8 @@ export function ProfilePage() {
       await userApi.changePassword(data);
       passwordForm.reset();
       toast.success(t('profile.toast.passwordChanged'));
-    } catch {
-      toast.error(t('profile.toast.passwordChangeFailed'));
+    } catch (err) {
+      toast.error(getServerErrorMessage(err, t('profile.toast.passwordChangeFailed')));
     }
   }
 

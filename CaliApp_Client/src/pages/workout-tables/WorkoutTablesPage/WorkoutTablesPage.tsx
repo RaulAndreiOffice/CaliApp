@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   Moon, ClipboardList, Activity, Layers, TrendingUp, Lightbulb, BarChart3,
-  PieChart as PieChartIcon, Table as TableIcon, GripVertical, X, Plus, Info,
+  PieChart as PieChartIcon, Table as TableIcon, GripVertical, X, Plus,
   LayoutDashboard, Check
 } from 'lucide-react';
 import {
@@ -12,9 +11,11 @@ import {
 import type { PieLabelRenderProps } from 'recharts';
 import { cn } from '../../../utils/cn';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner/LoadingSpinner';
+import { InfoTooltip } from '../../../components/ui/InfoTooltip';
 import { PlansBoard } from '../../../components/workout-tables/PlansBoard/PlansBoard';
 import { useTrainingLoadDashboard } from '../../../hooks/api/useStats';
 import { useWidgetReorder } from '../../../hooks/useWidgetReorder';
+import { useEditableWidgets } from '../../../hooks/useEditableWidgets';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import type { TranslationKey } from '../../../i18n/translations';
 import type {
@@ -114,12 +115,9 @@ function WidgetContent({ id, data, t }: Readonly<WidgetContentProps>) {
   if (id === 'stat-hardsets') {
     return (
       <>
-        <div className="flex items-center gap-1.5 group relative w-fit mb-1">
+        <div className="flex items-center gap-1.5 w-fit mb-1">
           <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight text-primary">{currentWeek?.hardSets ?? 0}</p>
-          <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
-          <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] font-normal text-foreground z-50 pointer-events-none">
-            {t('widget.hardSets.hint')}
-          </div>
+          <InfoTooltip label={t('widget.hardSets.title')} content={t('widget.hardSets.hint')} widthClass="w-48" />
         </div>
         <p className="text-xs text-muted-foreground mt-1">{t('widget.hardSets.desc')}</p>
       </>
@@ -128,12 +126,9 @@ function WidgetContent({ id, data, t }: Readonly<WidgetContentProps>) {
   if (id === 'stat-volume') {
     return (
       <>
-        <div className="flex items-center gap-1.5 group relative w-fit mb-1">
+        <div className="flex items-center gap-1.5 w-fit mb-1">
           <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{formatNumber(currentWeek?.equivalentReps ?? 0, locale)}</p>
-          <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
-          <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-56 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] font-normal text-foreground z-50 pointer-events-none">
-            {t('widget.volume.hint')}
-          </div>
+          <InfoTooltip label={t('widget.volume.title')} content={t('widget.volume.hint')} />
         </div>
         <p className="text-xs text-muted-foreground mt-1">{t('widget.volume.desc')}</p>
       </>
@@ -142,12 +137,9 @@ function WidgetContent({ id, data, t }: Readonly<WidgetContentProps>) {
   if (id === 'stat-acwr') {
     return (
       <>
-        <div className="flex items-center gap-1.5 group relative w-fit mb-1">
+        <div className="flex items-center gap-1.5 w-fit mb-1">
           <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{currentWeek?.acwr?.toFixed(2) ?? '-'}</p>
-          <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
-          <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-64 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] font-normal text-foreground z-50 pointer-events-none">
-            {t('widget.acwr.hint')}
-          </div>
+          <InfoTooltip label={t('widget.acwr.title')} content={t('widget.acwr.hint')} widthClass="w-64" />
         </div>
         <p className="text-xs text-muted-foreground mt-1">{t('widget.acwr.desc')}</p>
       </>
@@ -156,12 +148,9 @@ function WidgetContent({ id, data, t }: Readonly<WidgetContentProps>) {
   if (id === 'stat-pushpull') {
     return (
       <>
-        <div className="flex items-center gap-1.5 group relative w-fit mb-1">
+        <div className="flex items-center gap-1.5 w-fit mb-1">
           <p className="text-xl sm:text-2xl font-bold tabular-nums leading-tight">{balance?.pushPullRatio?.toFixed(2) ?? '-'}</p>
-          <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
-          <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] font-normal text-foreground z-50 pointer-events-none">
-            {t('widget.pushpull.hint')}
-          </div>
+          <InfoTooltip label={t('widget.pushpull.title')} content={t('widget.pushpull.hint')} widthClass="w-48" />
         </div>
         <p className="text-xs text-muted-foreground mt-1">{t(balanceKey(balance?.status ?? 'insufficient-data'))}</p>
       </>
@@ -312,9 +301,18 @@ function WidgetContent({ id, data, t }: Readonly<WidgetContentProps>) {
 export function WorkoutTablesPage() {
   const trainingLoad = useTrainingLoadDashboard(6);
   const { t } = useLanguage();
-  const [widgets, setWidgets] = useState<string[]>(DEFAULT_WIDGETS);
-  const [editMode, setEditMode] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
+  const {
+    widgets,
+    setWidgets,
+    editMode,
+    addOpen,
+    setAddOpen,
+    toggleEditMode,
+    availableToAdd,
+    addWidget,
+    removeWidget,
+    moveWidget,
+  } = useEditableWidgets({ initial: DEFAULT_WIDGETS, catalog: CATALOG });
 
   const { draggingId, overId, getItemProps, isPressing } = useWidgetReorder({
     enabled: editMode,
@@ -322,21 +320,6 @@ export function WorkoutTablesPage() {
     onReorder: setWidgets,
     onLongPressStart: () => toast.success(t('widget.editMode.dragHint'), { duration: 1200 }),
   });
-
-  const availableToAdd = Object.keys(CATALOG).filter((id) => !widgets.includes(id));
-  const removeWidget = (id: string) => setWidgets((prev) => prev.filter((w) => w !== id));
-  const addWidget = (id: string) => setWidgets((prev) => [...prev, id]);
-  const moveWidget = (id: string, delta: number) => {
-    setWidgets((prev) => {
-      const from = prev.indexOf(id);
-      const to = Math.max(0, Math.min(prev.length - 1, from + delta));
-      if (from === to) return prev;
-      const next = [...prev];
-      next.splice(from, 1);
-      next.splice(to, 0, id);
-      return next;
-    });
-  };
 
   if (trainingLoad.isLoading) return <LoadingSpinner label={t('common.loading')} />;
   const data = trainingLoad.data;
@@ -365,7 +348,7 @@ export function WorkoutTablesPage() {
           )}
           <button
             type="button"
-            onClick={() => { setEditMode((v) => !v); setAddOpen(false); }}
+            onClick={toggleEditMode}
             className={cn(
               'flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg text-sm font-medium transition-all',
               editMode

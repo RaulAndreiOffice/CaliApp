@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Play, Check, Timer, Plus, RotateCcw, Pencil,
+  Play, Check, Timer, Plus, RotateCcw, Pencil, ArrowUp, ArrowDown,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { cn } from '../../../utils/cn';
@@ -15,10 +15,12 @@ import {
   useWorkoutTable,
   useWorkoutTables,
 } from '../../../hooks/api/useWorkoutTables';
+import { useReorderRows } from '../../../hooks/api/useWorkoutTableRows';
 import { useStartSession, useWorkoutSession } from '../../../hooks/api/useWorkoutSessions';
 import { useUpsertPerformedSet } from '../../../hooks/api/usePerformedSets';
 import { useElapsedSeconds, useWorkoutStore } from '../../../stores/workout.store';
 import { useLanguage } from '../../../contexts/LanguageContext';
+import { getServerErrorMessage } from '../../../utils/errors';
 import type { WorkoutTable, WorkoutTableRow } from '../../../types/workoutTable.types';
 import type { WorkoutSessionRow } from '../../../types/workoutSession.types';
 
@@ -108,14 +110,8 @@ export function PlansBoard() {
     tabsRef.current?.scrollTo({ left: 0, behavior: 'smooth' });
   }, [activeTableId]);
 
-  // Keep the locally-selected plan in sync with the active one so Reset/end
-  // doesn't snap the view back to whatever plan the user was browsing before
-  // they pressed Start.
-  useEffect(() => {
-    if (activeTableId) setSelectedIdLocal(activeTableId);
-  }, [activeTableId]);
-
   const activeSelectedId = selectedId || sortedTables?.[0]?.id || '';
+  const reorderRowsMutation = useReorderRows(activeSelectedId);
   const selectedPlanSummary: WorkoutTable | undefined = sortedTables?.find(
     (t) => t.id === activeSelectedId,
   );
@@ -141,16 +137,39 @@ export function PlansBoard() {
     setInputValue('');
   };
 
+  const moveRow = (rowIndex: number, direction: -1 | 1) => {
+    if (!selectedPlan || isActive || reorderRowsMutation.isPending) return;
+    const targetIndex = rowIndex + direction;
+    if (targetIndex < 0 || targetIndex >= sortedRows.length) return;
+
+    const nextRows = [...sortedRows];
+    const [moved] = nextRows.splice(rowIndex, 1);
+    nextRows.splice(targetIndex, 0, moved);
+
+    reorderRowsMutation.mutate(
+      { orderedIds: nextRows.map((row) => row.id) },
+      {
+        onSuccess: () => toast.success(t('plans.detail.toast.saved')),
+        onError: () => toast.error(t('plans.row.toast.failed')),
+      },
+    );
+  };
+
   const startWorkout = () => {
     if (!selectedPlan) return;
+    const planId = selectedPlan.id;
+    const planName = selectedPlan.name;
     startSessionMutation.mutate(
-      { workoutTableId: selectedPlan.id },
+      { workoutTableId: planId },
       {
         onSuccess: (session) => {
-          startWorkoutInStore(session.id, selectedPlan.id);
-          toast.success(t('plans.toast.started', { name: selectedPlan.name }));
+          // Pin the local selection too so Reset/end keeps the user on the
+          // plan they just trained, not whatever they were browsing before.
+          setSelectedIdLocal(planId);
+          startWorkoutInStore(session.id, planId);
+          toast.success(t('plans.toast.started', { name: planName }));
         },
-        onError: () => toast.error(t('plans.toast.startFailed')),
+        onError: (err) => toast.error(getServerErrorMessage(err, t('plans.toast.startFailed'))),
       },
     );
   };
@@ -356,7 +375,7 @@ export function PlansBoard() {
 
           {!isSelectedPlanLoading && (
             <div className="space-y-2">
-              {sortedRows.map((row) => {
+              {sortedRows.map((row, rowIndex) => {
                 const exercise = row.exercise;
                 if (!exercise) return null;
                 const sessionRow = sessionRowByTableRowId.get(row.id);
@@ -375,11 +394,11 @@ export function PlansBoard() {
                         : 'border-border',
                     )}
                   >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <div
                           className={cn(
-                            'w-4 h-4 rounded-full flex items-center justify-center transition-all',
+                            'w-4 h-4 rounded-full flex items-center justify-center transition-all shrink-0',
                             isExDone && isActive ? 'bg-primary' : 'border-2 border-border',
                           )}
                         >
@@ -396,9 +415,35 @@ export function PlansBoard() {
                           )}
                         </div>
                       </div>
-                      <span className="text-xs text-muted-foreground tabular-nums">
-                        {row.plannedSets} x {row.plannedTargetValue}{unit}
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {!isActive && sortedRows.length > 1 && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => moveRow(rowIndex, -1)}
+                              disabled={rowIndex === 0 || reorderRowsMutation.isPending}
+                              className="w-8 h-8 flex items-center justify-center rounded-md bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              aria-label={`${t('common.previous')}: ${exercise.name}`}
+                              title={t('common.previous')}
+                            >
+                              <ArrowUp className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveRow(rowIndex, 1)}
+                              disabled={rowIndex === sortedRows.length - 1 || reorderRowsMutation.isPending}
+                              className="w-8 h-8 flex items-center justify-center rounded-md bg-muted text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                              aria-label={`${t('common.next')}: ${exercise.name}`}
+                              title={t('common.next')}
+                            >
+                              <ArrowDown className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
+                        <span className="text-xs text-muted-foreground tabular-nums">
+                          {row.plannedSets} x {row.plannedTargetValue}{unit}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="flex flex-wrap gap-1.5">

@@ -1,4 +1,4 @@
-import { Moon, Info } from 'lucide-react';
+import { Moon } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -24,6 +24,7 @@ import {
   CardTitle,
 } from '../../ui/Card';
 import { LoadingSpinner } from '../../common/LoadingSpinner/LoadingSpinner';
+import { InfoTooltip } from '../../ui/InfoTooltip';
 import { useTrainingLoadDashboard } from '../../../hooks/api/useStats';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import type { TranslationKey } from '../../../i18n/translations';
@@ -119,12 +120,9 @@ export function ProgressDashboardSection({
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <Card>
           <CardContent className="pt-3 sm:pt-4">
-            <div className="flex items-center gap-1.5 group relative w-fit">
+            <div className="flex items-center gap-1.5 w-fit">
               <p className="text-xs sm:text-sm text-muted-foreground">{t('widget.hardSets.title')}</p>
-              <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
-              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] text-foreground font-normal z-50 pointer-events-none">
-                {t('stats.hardSets.hint.short')}
-              </div>
+              <InfoTooltip label={t('widget.hardSets.title')} content={t('stats.hardSets.hint.short')} widthClass="w-48" />
             </div>
             <p className="text-xl sm:text-3xl font-bold text-primary">
               {currentWeek?.hardSets ?? 0}
@@ -134,12 +132,9 @@ export function ProgressDashboardSection({
         </Card>
         <Card>
           <CardContent className="pt-3 sm:pt-4">
-            <div className="flex items-center gap-1.5 group relative w-fit">
+            <div className="flex items-center gap-1.5 w-fit">
               <p className="text-xs sm:text-sm text-muted-foreground">{t('widget.volume.title')}</p>
-              <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
-              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-56 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] text-foreground font-normal z-50 pointer-events-none">
-                {t('stats.volume.hint.short')}
-              </div>
+              <InfoTooltip label={t('widget.volume.title')} content={t('stats.volume.hint.short')} />
             </div>
             <p className="text-xl sm:text-3xl font-bold">
               {formatNumber(currentWeek?.equivalentReps ?? 0)}
@@ -149,12 +144,9 @@ export function ProgressDashboardSection({
         </Card>
         <Card>
           <CardContent className="pt-3 sm:pt-4">
-            <div className="flex items-center gap-1.5 group relative w-fit">
+            <div className="flex items-center gap-1.5 w-fit">
               <p className="text-xs sm:text-sm text-muted-foreground">{t('widget.acwr.title')}</p>
-              <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
-              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-56 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] text-foreground font-normal z-50 pointer-events-none">
-                {t('stats.acwr.hint.short')}
-              </div>
+              <InfoTooltip label={t('widget.acwr.title')} content={t('stats.acwr.hint.short')} />
             </div>
             <p className="text-xl sm:text-3xl font-bold">
               {currentWeek?.acwr?.toFixed(2) ?? '-'}
@@ -164,12 +156,9 @@ export function ProgressDashboardSection({
         </Card>
         <Card>
           <CardContent className="pt-3 sm:pt-4">
-            <div className="flex items-center gap-1.5 group relative w-fit">
+            <div className="flex items-center gap-1.5 w-fit">
               <p className="text-xs sm:text-sm text-muted-foreground">{t('widget.pushpull.title')}</p>
-              <Info className="w-3.5 h-3.5 text-muted-foreground/60 cursor-help" />
-              <div className="absolute left-0 bottom-full mb-1 hidden group-hover:block w-48 p-2 bg-card border border-border rounded-lg shadow-lg text-[11px] text-foreground font-normal z-50 pointer-events-none">
-                {t('stats.pushpull.hint.short')}
-              </div>
+              <InfoTooltip label={t('widget.pushpull.title')} content={t('stats.pushpull.hint.short')} widthClass="w-48" />
             </div>
             <p className="text-xl sm:text-3xl font-bold">
               {balance?.pushPullRatio?.toFixed(2) ?? '-'}

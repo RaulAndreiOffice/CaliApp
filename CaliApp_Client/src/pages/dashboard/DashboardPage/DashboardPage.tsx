@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   Activity, Zap, Target, TrendingUp, GripVertical,
@@ -16,7 +15,9 @@ import { useOverview, useTrainingLoadDashboard } from '../../../hooks/api/useSta
 import { useLogRestDay } from '../../../hooks/api/useWorkoutSessions';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner/LoadingSpinner';
 import { useWidgetReorder } from '../../../hooks/useWidgetReorder';
+import { useEditableWidgets } from '../../../hooks/useEditableWidgets';
 import { useLanguage } from '../../../contexts/LanguageContext';
+import { getServerErrorMessage } from '../../../utils/errors';
 import type { TranslationKey } from '../../../i18n/translations';
 import type { TrainingLoadDashboard } from '../../../types/stats.types';
 
@@ -182,9 +183,18 @@ export function DashboardPage() {
   const trainingLoad = useTrainingLoadDashboard(6);
   const logRestDay = useLogRestDay();
   const { t } = useLanguage();
-  const [widgets, setWidgets] = useState<string[]>(DEFAULT_WIDGETS);
-  const [editMode, setEditMode] = useState(false);
-  const [addOpen, setAddOpen] = useState(false);
+  const {
+    widgets,
+    setWidgets,
+    editMode,
+    addOpen,
+    setAddOpen,
+    toggleEditMode,
+    availableToAdd,
+    addWidget,
+    removeWidget,
+    moveWidget,
+  } = useEditableWidgets({ initial: DEFAULT_WIDGETS, catalog: CATALOG });
 
   const { draggingId, overId, getItemProps, isPressing } = useWidgetReorder({
     enabled: editMode,
@@ -198,28 +208,9 @@ export function DashboardPage() {
       {},
       {
         onSuccess: () => toast.success(t('sessions.toast.restLogged')),
-        onError: (err: unknown) => {
-          const msg = (err as { response?: { data?: { error?: { message?: string } } } })
-            ?.response?.data?.error?.message;
-          toast.error(msg ?? t('sessions.toast.restFailed'));
-        },
+        onError: (err) => toast.error(getServerErrorMessage(err, t('sessions.toast.restFailed'))),
       }
     );
-  };
-
-  const availableToAdd = Object.keys(CATALOG).filter((id) => !widgets.includes(id));
-  const removeWidget = (id: string) => setWidgets((prev) => prev.filter((w) => w !== id));
-  const addWidget = (id: string) => setWidgets((prev) => [...prev, id]);
-  const moveWidget = (id: string, delta: number) => {
-    setWidgets((prev) => {
-      const from = prev.indexOf(id);
-      const to = Math.max(0, Math.min(prev.length - 1, from + delta));
-      if (from === to) return prev;
-      const next = [...prev];
-      next.splice(from, 1);
-      next.splice(to, 0, id);
-      return next;
-    });
   };
 
   if (isLoading || trainingLoad.isLoading) return <LoadingSpinner label={t('common.loading')} />;
@@ -260,7 +251,7 @@ export function DashboardPage() {
           )}
           <button
             type="button"
-            onClick={() => { setEditMode((v) => !v); setAddOpen(false); }}
+            onClick={toggleEditMode}
             className={cn(
               'flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg text-sm font-medium transition-all',
               editMode

@@ -161,6 +161,8 @@ export const ro = {
   'common.aria.prevPage': 'Pagina anterioară',
   'common.aria.nextPage': 'Pagina următoare',
   'common.aria.error': 'A apărut o eroare.',
+  'input.showPassword': 'Arată parola',
+  'input.hidePassword': 'Ascunde parola',
 
   // ───── exercises
   'exercises.title': 'Exerciții',
@@ -661,6 +663,8 @@ export const en: Record<keyof typeof ro, string> = {
   'common.aria.prevPage': 'Previous page',
   'common.aria.nextPage': 'Next page',
   'common.aria.error': 'An error occurred.',
+  'input.showPassword': 'Show password',
+  'input.hidePassword': 'Hide password',
 
   // ───── exercises
   'exercises.title': 'Exercises',

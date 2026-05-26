@@ -16,6 +16,7 @@ import {
 } from '../../../hooks/api/useWorkoutSessions';
 import { useWorkoutStore } from '../../../stores/workout.store';
 import { useLanguage } from '../../../contexts/LanguageContext';
+import { getServerErrorMessage } from '../../../utils/errors';
 import { formatDate } from '../../../utils/formatters';
 import type { TranslationKey } from '../../../i18n/translations';
 import type { WorkoutSessionStatus } from '../../../types/workoutSession.types';
@@ -57,7 +58,7 @@ export function WorkoutSessionsPage() {
         toast.success(t('sessions.toast.deleted'));
         setPendingDeleteId(null);
       },
-      onError: () => toast.error(t('sessions.toast.deleteFailed')),
+      onError: (err) => toast.error(getServerErrorMessage(err, t('sessions.toast.deleteFailed'))),
     });
   };
 
@@ -66,11 +67,7 @@ export function WorkoutSessionsPage() {
       {},
       {
         onSuccess: () => toast.success(t('sessions.toast.restLogged')),
-        onError: (err: unknown) => {
-          const msg = (err as { response?: { data?: { error?: { message?: string } } } })
-            ?.response?.data?.error?.message;
-          toast.error(msg ?? t('sessions.toast.restFailed'));
-        },
+        onError: (err) => toast.error(getServerErrorMessage(err, t('sessions.toast.restFailed'))),
       }
     );
   };
