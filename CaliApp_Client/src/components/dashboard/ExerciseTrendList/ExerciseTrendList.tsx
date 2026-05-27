@@ -1,64 +1,43 @@
-import { ArrowUp, ArrowDown, Minus, AlertTriangle } from 'lucide-react';
-import { Line, LineChart, ResponsiveContainer } from 'recharts';
+import {
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { useLanguage } from '../../../contexts/LanguageContext';
-import { cn } from '../../../utils/cn';
-import type { TranslationKey } from '../../../i18n/translations';
 import type { ExerciseInsight } from '../../../types/stats.types';
+
+// Distinct hues so each line is readable when overlaid. Capped to MAX_LINES
+// because anything past ~8 lines turns into spaghetti even with strong colors.
+const COLORS = [
+  '#84ff00',
+  '#38bdf8',
+  '#f97316',
+  '#a855f7',
+  '#22c55e',
+  '#f43f5e',
+  '#eab308',
+  '#ec4899',
+];
+const MAX_LINES = 8;
+
+const tooltipStyle = {
+  backgroundColor: 'var(--glass-bg-strong, rgba(38, 38, 38, 0.85))',
+  backdropFilter: 'blur(40px)',
+  border: '1px solid var(--border)',
+  borderRadius: '8px',
+  fontSize: '12px',
+};
 
 interface Props {
   exercises: ExerciseInsight[];
-  /** How many rows to render — keep the widget compact in the grid. */
-  limit?: number;
 }
 
-const TREND_LABEL: Record<ExerciseInsight['trend'], TranslationKey> = {
-  up: 'dashboard.progress.exercises.trend.up',
-  flat: 'dashboard.progress.exercises.trend.flat',
-  down: 'dashboard.progress.exercises.trend.down',
-  insufficient: 'dashboard.progress.exercises.trend.insufficient',
-};
-
-const TREND_CLASS: Record<ExerciseInsight['trend'], string> = {
-  up: 'text-primary bg-primary/10 border-primary/30',
-  flat: 'text-muted-foreground bg-muted/30 border-border/40',
-  down: 'text-amber-300 bg-amber-500/10 border-amber-500/30',
-  insufficient: 'text-muted-foreground/70 bg-muted/20 border-border/30',
-};
-
-function TrendIcon({ trend }: Readonly<{ trend: ExerciseInsight['trend'] }>) {
-  if (trend === 'up') return <ArrowUp className="w-3 h-3" />;
-  if (trend === 'down') return <ArrowDown className="w-3 h-3" />;
-  return <Minus className="w-3 h-3" />;
-}
-
-function Sparkline({ exercise }: Readonly<{ exercise: ExerciseInsight }>) {
-  const data = exercise.weeklyData.map((w) => ({
-    label: w.label,
-    value: w.totalReps + Math.round(w.totalTimeSeconds / 2),
-  }));
-  const allZero = data.every((d) => d.value === 0);
-  if (allZero) return <div className="h-8 w-20" />;
-
-  const color = exercise.trend === 'down' ? '#f59e0b' : '#84ff00';
-  return (
-    <div className="h-8 w-20">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={data}>
-          <Line
-            type="monotone"
-            dataKey="value"
-            stroke={color}
-            strokeWidth={1.5}
-            dot={false}
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
-  );
-}
-
-export function ExerciseTrendList({ exercises, limit = 5 }: Readonly<Props>) {
+export function ExerciseTrendList({ exercises }: Readonly<Props>) {
   const { t } = useLanguage();
 
   if (exercises.length === 0) {
@@ -69,57 +48,58 @@ export function ExerciseTrendList({ exercises, limit = 5 }: Readonly<Props>) {
     );
   }
 
-  const rows = exercises.slice(0, limit);
+  // Backend already sorts: warnings first, then most-recently-active.
+  // Cap here so a user with 30 exercises still gets a readable chart.
+  const top = exercises.slice(0, MAX_LINES);
+
+  // All exercises share the same weekly buckets (backend pads empty weeks
+  // for every exercise), so we can pivot to wide format keyed by exerciseId
+  // (not name — two exercises could share a label and one would overwrite
+  // the other in the row).
+  const labels = top[0]?.weeklyData.map((w) => w.label) ?? [];
+  const data = labels.map((label, idx) => {
+    const row: Record<string, string | number> = { label };
+    for (const ex of top) {
+      const point = ex.weeklyData[idx];
+      // Equivalent volume: reps + seconds/2, same metric as the sessions chart.
+      row[ex.exerciseId] = point ? point.totalReps + Math.round(point.totalTimeSeconds / 2) : 0;
+    }
+    return row;
+  });
+
+  const hasAnyVolume = data.some((row) =>
+    top.some((ex) => Number(row[ex.exerciseId] ?? 0) > 0),
+  );
+  if (!hasAnyVolume) {
+    return (
+      <p className="text-sm text-muted-foreground py-6 text-center">
+        {t('dashboard.progress.weekly.empty')}
+      </p>
+    );
+  }
 
   return (
-    <ul className="flex flex-col gap-2">
-      {rows.map((ex) => {
-        const last = ex.weeklyData[ex.weeklyData.length - 1];
-        const lastLabel = ex.measurementType === 'time'
-          ? t('dashboard.progress.exercises.lastWeekTime', {
-              seconds: last?.totalTimeSeconds ?? 0,
-              sets: last?.sets ?? 0,
-            })
-          : t('dashboard.progress.exercises.lastWeek', {
-              reps: last?.totalReps ?? 0,
-              sets: last?.sets ?? 0,
-            });
-
-        return (
-          <li
+    <ResponsiveContainer width="100%" height={260}>
+      <LineChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+        <XAxis dataKey="label" stroke="#a3a3a3" style={{ fontSize: '11px' }} />
+        <YAxis stroke="#a3a3a3" style={{ fontSize: '11px' }} allowDecimals={false} />
+        <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: '#f5f5f5' }} />
+        <Legend wrapperStyle={{ fontSize: '11px', paddingTop: 6 }} />
+        {top.map((ex, i) => (
+          <Line
             key={ex.exerciseId}
-            className="flex items-center gap-3 p-2.5 bg-muted/20 border border-border/30 rounded-lg"
-          >
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="font-medium text-sm truncate">{ex.name}</span>
-                {ex.warning && (
-                  <AlertTriangle
-                    className="w-3.5 h-3.5 text-amber-400 shrink-0"
-                    aria-label={ex.warning.message}
-                  />
-                )}
-              </div>
-              <p className="text-[11px] text-muted-foreground truncate">{lastLabel}</p>
-            </div>
-
-            <Sparkline exercise={ex} />
-
-            <span
-              className={cn(
-                'inline-flex items-center gap-1 px-2 py-1 rounded-full border text-[10px] font-semibold whitespace-nowrap',
-                TREND_CLASS[ex.trend],
-              )}
-            >
-              <TrendIcon trend={ex.trend} />
-              {t(TREND_LABEL[ex.trend])}
-              {ex.trend !== 'insufficient' && ex.trend !== 'flat' && (
-                <span className="tabular-nums">{ex.deltaPercent > 0 ? '+' : ''}{ex.deltaPercent}%</span>
-              )}
-            </span>
-          </li>
-        );
-      })}
-    </ul>
+            type="monotone"
+            dataKey={ex.exerciseId}
+            name={ex.name}
+            stroke={COLORS[i % COLORS.length]}
+            strokeWidth={2}
+            dot={{ r: 3 }}
+            activeDot={{ r: 5 }}
+            isAnimationActive={false}
+          />
+        ))}
+      </LineChart>
+    </ResponsiveContainer>
   );
 }
