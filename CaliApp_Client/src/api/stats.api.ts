@@ -5,7 +5,10 @@ import type {
   WeeklyStats,
   DashboardOverview,
   TrainingLoadDashboard,
+  ProgressInsights,
 } from '../types/stats.types';
+
+export type TrainingLoadRange = number | 'all';
 
 export const statsApi = {
   async getExerciseProgress(
@@ -29,9 +32,17 @@ export const statsApi = {
     return res.data.data;
   },
 
-  async getTrainingLoadDashboard(weeks = 6): Promise<TrainingLoadDashboard> {
+  async getTrainingLoadDashboard(weeks: TrainingLoadRange = 6): Promise<TrainingLoadDashboard> {
     const res = await api.get<ApiResponse<TrainingLoadDashboard>>(
       '/stats/training-load',
+      { params: { weeks } }
+    );
+    return res.data.data;
+  },
+
+  async getProgressInsights(weeks = 8): Promise<ProgressInsights> {
+    const res = await api.get<ApiResponse<ProgressInsights>>(
+      '/stats/progress-insights',
       { params: { weeks } }
     );
     return res.data.data;

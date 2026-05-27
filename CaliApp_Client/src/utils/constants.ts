@@ -25,5 +25,6 @@ export const QUERY_KEYS = {
   STATS_OVERVIEW: ['stats', 'overview'] as const,
   STATS_WEEKLY: ['stats', 'weekly'] as const,
   STATS_TRAINING_LOAD: ['stats', 'training-load'] as const,
+  STATS_PROGRESS_INSIGHTS: ['stats', 'progress-insights'] as const,
   STATS_EXERCISE: (id: string) => ['stats', 'exercise', id] as const,
 } as const;

@@ -10,5 +10,6 @@ router.get("/overview", statsController.getOverview);
 router.get("/weekly", statsController.getWeekly);
 router.get("/training-load", statsController.getTrainingLoadDashboard);
 router.get("/exercise/:id", statsController.getExerciseProgress);
+router.get("/progress-insights", statsController.getProgressInsights);
 
 export default router;

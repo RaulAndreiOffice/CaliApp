@@ -2,24 +2,24 @@ import toast from 'react-hot-toast';
 import {
   Activity, Zap, Target, TrendingUp, GripVertical,
   X, Plus, LayoutDashboard, Check, Clock, Moon,
-  BarChart2, LineChart as LineChartIcon,
+  LineChart as LineChartIcon, BarChart3, PieChart as PieChartIcon, AlertTriangle,
 } from 'lucide-react';
-import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, BarChart, Bar,
-} from 'recharts';
 import { Badge } from '../../../components/ui/Badge';
 import { cn } from '../../../utils/cn';
 import { useAuthStore } from '../../../stores/auth.store';
-import { useOverview, useTrainingLoadDashboard } from '../../../hooks/api/useStats';
+import { useOverview, useProgressInsights } from '../../../hooks/api/useStats';
 import { useLogRestDay } from '../../../hooks/api/useWorkoutSessions';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner/LoadingSpinner';
+import { WeeklyProgressChart } from '../../../components/dashboard/WeeklyProgressChart/WeeklyProgressChart';
+import { ExerciseTrendList } from '../../../components/dashboard/ExerciseTrendList/ExerciseTrendList';
+import { WorkoutPercentages } from '../../../components/dashboard/WorkoutPercentages/WorkoutPercentages';
+import { SmartWarnings } from '../../../components/dashboard/SmartWarnings/SmartWarnings';
 import { useWidgetReorder } from '../../../hooks/useWidgetReorder';
 import { useEditableWidgets } from '../../../hooks/useEditableWidgets';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { getServerErrorMessage } from '../../../utils/errors';
 import type { TranslationKey } from '../../../i18n/translations';
-import type { TrainingLoadDashboard } from '../../../types/stats.types';
+import type { ProgressInsights } from '../../../types/stats.types';
 
 // ─── widget catalog ──────────────────────────────────────────────────────────
 
@@ -32,19 +32,26 @@ interface WidgetMeta {
   icon: React.ElementType;
 }
 
+// Dashboard intentionally drops the daily-bar and weekly-rate charts that
+// used to live here — they are now centralised in Plans & Progress. The
+// dashboard's job is to summarise *progress*: per-exercise evolution,
+// weekly trend, activity distribution, and smart warnings.
 const CATALOG: Record<string, WidgetMeta> = {
-  'stat-sessions':    { titleKey: 'dashboard.widget.sessions.title',    descKey: 'dashboard.widget.sessions.desc',    size: 'sm', icon: Activity },
-  'stat-streak':      { titleKey: 'dashboard.widget.streak.title',      descKey: 'dashboard.widget.streak.desc',      size: 'sm', icon: Zap },
-  'stat-exercises':   { titleKey: 'dashboard.widget.exercises.title',   descKey: 'dashboard.widget.exercises.desc',   size: 'sm', icon: Target },
-  'stat-consistency': { titleKey: 'dashboard.widget.consistency.title', descKey: 'dashboard.widget.consistency.desc', size: 'sm', icon: TrendingUp },
-  'chart-volume':     { titleKey: 'dashboard.widget.volume.title',      descKey: 'dashboard.widget.volume.desc',      size: 'lg', icon: BarChart2 },
-  'chart-completion': { titleKey: 'dashboard.widget.completion.title',  descKey: 'dashboard.widget.completion.desc',  size: 'lg', icon: LineChartIcon },
-  'recent-sessions':  { titleKey: 'dashboard.widget.recent.title',      descKey: 'dashboard.widget.recent.desc',      size: 'lg', icon: Clock },
+  'stat-sessions':       { titleKey: 'dashboard.widget.sessions.title',       descKey: 'dashboard.widget.sessions.desc',       size: 'sm', icon: Activity },
+  'stat-streak':         { titleKey: 'dashboard.widget.streak.title',         descKey: 'dashboard.widget.streak.desc',         size: 'sm', icon: Zap },
+  'stat-exercises':      { titleKey: 'dashboard.widget.exercises.title',      descKey: 'dashboard.widget.exercises.desc',      size: 'sm', icon: Target },
+  'stat-consistency':    { titleKey: 'dashboard.widget.consistency.title',    descKey: 'dashboard.widget.consistency.desc',    size: 'sm', icon: TrendingUp },
+  'progress-weekly':     { titleKey: 'dashboard.progress.weekly.title',       descKey: 'dashboard.progress.weekly.desc',       size: 'lg', icon: LineChartIcon },
+  'progress-exercises':  { titleKey: 'dashboard.progress.exercises.title',    descKey: 'dashboard.progress.exercises.desc',    size: 'lg', icon: BarChart3 },
+  'progress-percentages':{ titleKey: 'dashboard.progress.percentages.title',  descKey: 'dashboard.progress.percentages.desc',  size: 'lg', icon: PieChartIcon },
+  'progress-warnings':   { titleKey: 'dashboard.progress.warnings.title',     descKey: 'dashboard.progress.warnings.desc',     size: 'lg', icon: AlertTriangle },
+  'recent-sessions':     { titleKey: 'dashboard.widget.recent.title',         descKey: 'dashboard.widget.recent.desc',         size: 'lg', icon: Clock },
 };
 
 const DEFAULT_WIDGETS = [
   'stat-sessions', 'stat-streak', 'stat-exercises', 'stat-consistency',
-  'chart-volume', 'chart-completion',
+  'progress-weekly', 'progress-percentages',
+  'progress-exercises', 'progress-warnings',
   'recent-sessions',
 ];
 
@@ -62,18 +69,15 @@ const STAT_COLORS: Record<string, string> = {
 interface WidgetContentProps {
   id: string;
   overview: ReturnType<typeof useOverview>['data'];
-  trainingLoad?: TrainingLoadDashboard;
+  insights?: ProgressInsights;
   t: ReturnType<typeof useLanguage>['t'];
 }
 
-function WidgetContent({ id, overview, trainingLoad, t }: Readonly<WidgetContentProps>) {
-  const currentWeek = trainingLoad?.weeklyTrend.at(-1);
-  const dailyData = trainingLoad?.dailyVolume ?? [];
-  const weeklySessionGoal = 3;
-  const consistency = Math.min(
-    100,
-    Math.round(((currentWeek?.sessionsCount ?? 0) / weeklySessionGoal) * 100)
-  );
+function WidgetContent({ id, overview, insights, t }: Readonly<WidgetContentProps>) {
+  // Activity proxy: pace of days trained in the rolling 7d window. Falls back
+  // to 0 until the first session lands so the new-user dashboard doesn't show
+  // a confusing NaN%.
+  const consistency = Math.round((insights?.workoutPercentages.activeDaysRatio ?? 0) * 100);
 
   const statValues: Record<string, string | number> = {
     'stat-sessions': overview?.totalSessions ?? 0,
@@ -99,46 +103,32 @@ function WidgetContent({ id, overview, trainingLoad, t }: Readonly<WidgetContent
     );
   }
 
-  if (id === 'chart-volume') {
-    return (
-      <ResponsiveContainer width="100%" height={160}>
-        <BarChart data={dailyData} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-          <XAxis dataKey="label" stroke="#666" style={{ fontSize: '11px' }} tick={{ fill: '#888' }} />
-          <YAxis stroke="#666" style={{ fontSize: '11px' }} tick={{ fill: '#888' }} />
-          <Tooltip
-            contentStyle={{ backgroundColor: 'var(--glass-bg-strong, rgba(38,38,38,0.85))', backdropFilter: 'blur(40px)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }}
-            labelStyle={{ color: '#f5f5f5' }}
-          />
-          <Bar dataKey="hardSets" name={t('dashboard.chart.hardSets')} fill="#84ff00" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
-    );
+  if (id === 'progress-weekly') {
+    if (!insights) {
+      return <p className="text-sm text-muted-foreground py-6 text-center">{t('dashboard.progress.empty')}</p>;
+    }
+    return <WeeklyProgressChart data={insights.weeklyTrend} />;
   }
 
-  if (id === 'chart-completion') {
-    return (
-      <ResponsiveContainer width="100%" height={160}>
-        <AreaChart data={dailyData} margin={{ top: 4, right: 0, left: -20, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-          <XAxis dataKey="label" stroke="#666" style={{ fontSize: '11px' }} tick={{ fill: '#888' }} />
-          <YAxis stroke="#666" style={{ fontSize: '11px' }} tick={{ fill: '#888' }} domain={[0, 100]} />
-          <Tooltip
-            contentStyle={{ backgroundColor: 'var(--glass-bg-strong, rgba(38,38,38,0.85))', backdropFilter: 'blur(40px)', border: '1px solid var(--border)', borderRadius: '12px', fontSize: '12px' }}
-            labelStyle={{ color: '#f5f5f5' }}
-          />
-          <Area
-            type="monotone"
-            dataKey="completionRate"
-            name={t('dashboard.chart.completionRate')}
-            stroke="#3b82f6"
-            fill="#3b82f6"
-            fillOpacity={0.15}
-            strokeWidth={2}
-          />
-        </AreaChart>
-      </ResponsiveContainer>
-    );
+  if (id === 'progress-exercises') {
+    if (!insights) {
+      return <p className="text-sm text-muted-foreground py-6 text-center">{t('dashboard.progress.empty')}</p>;
+    }
+    return <ExerciseTrendList exercises={insights.exercises} />;
+  }
+
+  if (id === 'progress-percentages') {
+    if (!insights) {
+      return <p className="text-sm text-muted-foreground py-6 text-center">{t('dashboard.progress.empty')}</p>;
+    }
+    return <WorkoutPercentages data={insights.workoutPercentages} />;
+  }
+
+  if (id === 'progress-warnings') {
+    if (!insights) {
+      return <p className="text-sm text-muted-foreground py-6 text-center">{t('dashboard.progress.empty')}</p>;
+    }
+    return <SmartWarnings exercises={insights.exercises} learningState={insights.learningState} />;
   }
 
   if (id === 'recent-sessions') {
@@ -180,7 +170,7 @@ function WidgetContent({ id, overview, trainingLoad, t }: Readonly<WidgetContent
 export function DashboardPage() {
   const user = useAuthStore((s) => s.user);
   const { data, isLoading } = useOverview();
-  const trainingLoad = useTrainingLoadDashboard(6);
+  const insightsQuery = useProgressInsights(8);
   const logRestDay = useLogRestDay();
   const { t } = useLanguage();
   const {
@@ -213,7 +203,8 @@ export function DashboardPage() {
     );
   };
 
-  if (isLoading || trainingLoad.isLoading) return <LoadingSpinner label={t('common.loading')} />;
+  if (isLoading || insightsQuery.isLoading) return <LoadingSpinner label={t('common.loading')} />;
+  const insights = insightsQuery.data;
 
   return (
     <div className="space-y-4 sm:space-y-5">
@@ -344,7 +335,7 @@ export function DashboardPage() {
                 <WidgetContent
                   id={id}
                   overview={data}
-                  trainingLoad={trainingLoad.data}
+                  insights={insights}
                   t={t}
                 />
               </div>

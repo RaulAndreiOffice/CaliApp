@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { statsApi } from '../../api/stats.api';
+import { statsApi, type TrainingLoadRange } from '../../api/stats.api';
 import { QUERY_KEYS } from '../../utils/constants';
 
 export function useExerciseProgress(exerciseId: string | undefined, weeks = 8) {
@@ -26,9 +26,16 @@ export function useOverview() {
   });
 }
 
-export function useTrainingLoadDashboard(weeks = 6) {
+export function useTrainingLoadDashboard(weeks: TrainingLoadRange = 6) {
   return useQuery({
     queryKey: [...QUERY_KEYS.STATS_TRAINING_LOAD, weeks],
     queryFn: () => statsApi.getTrainingLoadDashboard(weeks),
+  });
+}
+
+export function useProgressInsights(weeks = 8) {
+  return useQuery({
+    queryKey: [...QUERY_KEYS.STATS_PROGRESS_INSIGHTS, weeks],
+    queryFn: () => statsApi.getProgressInsights(weeks),
   });
 }

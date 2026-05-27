@@ -20,7 +20,8 @@ export const statsController = {
 
   getTrainingLoadDashboard: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const weeks = parseInt(req.query.weeks as string, 10) || 6;
+      const rawWeeks = req.query.weeks as string | undefined;
+      const weeks = rawWeeks === "all" ? "all" : Number.parseInt(rawWeeks ?? "", 10) || 6;
       const stats = await statsService.getTrainingLoadDashboard(req.user!.id, weeks);
       sendSuccess(res, stats);
     } catch (err) { next(err); }
@@ -28,9 +29,17 @@ export const statsController = {
 
   getExerciseProgress: async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const weeks = parseInt(req.query.weeks as string, 10) || 8;
+      const weeks = Number.parseInt(req.query.weeks as string, 10) || 8;
       const progress = await statsService.getExerciseProgress(req.user!.id, getRouteParam(req, "id"), weeks);
       sendSuccess(res, progress);
+    } catch (err) { next(err); }
+  },
+
+  getProgressInsights: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const weeks = Number.parseInt(req.query.weeks as string, 10) || 8;
+      const insights = await statsService.getProgressInsights(req.user!.id, weeks);
+      sendSuccess(res, insights);
     } catch (err) { next(err); }
   },
 };

@@ -128,3 +128,61 @@ export interface TrainingLoadDashboard {
   restDaysThisWeek: number;
   learningState: LearningState;
 }
+
+// ---- progress insights (dashboard) -----------------------------------------
+
+export interface ExerciseTrendPoint {
+  weekStart: string;
+  label: string;
+  totalReps: number;
+  totalTimeSeconds: number;
+  sets: number;
+  sessions: number;
+  avgPerSet: number;
+}
+
+export interface ExerciseInsightWarning {
+  kind: 'drop' | 'spike';
+  severity: 'info' | 'warning';
+  message: string;
+}
+
+export interface ExerciseInsight {
+  exerciseId: string;
+  name: string;
+  category: string;
+  measurementType: 'reps' | 'time';
+  weeklyData: ExerciseTrendPoint[];
+  trend: 'up' | 'flat' | 'down' | 'insufficient';
+  deltaPercent: number;
+  warning: ExerciseInsightWarning | null;
+}
+
+export interface CategoryShare {
+  category: string;
+  sets: number;
+  percentage: number;
+}
+
+export interface WorkoutPercentages {
+  activeDaysRatio: number;
+  completionRate: number;
+  totalCompletedSessions: number;
+  byCategory: CategoryShare[];
+}
+
+export interface WeeklyVolumePoint {
+  weekStart: string;
+  label: string;
+  totalReps: number;
+  totalTimeSeconds: number;
+  sessions: number;
+  totalSets: number;
+}
+
+export interface ProgressInsights {
+  exercises: ExerciseInsight[];
+  workoutPercentages: WorkoutPercentages;
+  weeklyTrend: WeeklyVolumePoint[];
+  learningState: LearningState;
+}

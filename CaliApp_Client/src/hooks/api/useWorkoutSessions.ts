@@ -15,6 +15,7 @@ function invalidateSessionDependentQueries(qc: QueryClient) {
   qc.invalidateQueries({ queryKey: QUERY_KEYS.STATS_OVERVIEW });
   qc.invalidateQueries({ queryKey: QUERY_KEYS.STATS_WEEKLY });
   qc.invalidateQueries({ queryKey: QUERY_KEYS.STATS_TRAINING_LOAD });
+  qc.invalidateQueries({ queryKey: QUERY_KEYS.STATS_PROGRESS_INSIGHTS });
   qc.invalidateQueries({ queryKey: ['stats', 'exercise'] });
 }
 
