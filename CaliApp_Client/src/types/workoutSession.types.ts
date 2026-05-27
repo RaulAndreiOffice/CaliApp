@@ -48,3 +48,10 @@ export interface LogRestDayRequest {
   date?: string;
   notes?: string;
 }
+
+export interface AddSessionRowRequest {
+  exerciseId: string;
+  plannedSets: number;
+  plannedTargetValue: number;
+  notes?: string;
+}

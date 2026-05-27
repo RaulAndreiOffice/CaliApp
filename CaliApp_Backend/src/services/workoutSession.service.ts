@@ -1,11 +1,13 @@
 import { workoutSessionRepository } from "../repositories/workoutSession.repository";
 import { workoutSessionRowRepository } from "../repositories/workoutSessionRow.repository";
 import { workoutTableRepository } from "../repositories/workoutTable.repository";
+import { exerciseRepository } from "../repositories/exercise.repository";
 import { AppError } from "../utils/apiError";
 import { parsePagination, getPrismaSkip, buildPaginationMeta } from "../utils/pagination";
 import type { PaginatedResponseDTO } from "../dtos/common/pagination.dto";
 import type { LogRestDayDTO } from "../dtos/workout-session/log-rest-day.dto";
 import type { StartSessionDTO } from "../dtos/workout-session/start-session.dto";
+import type { AddSessionRowDTO } from "../dtos/workout-session/add-session-row.dto";
 import type { WorkoutSessionResponseDTO } from "../dtos/workout-session/workout-session-response.dto";
 import type { SessionStatus } from "../models/workoutSession.model";
 
@@ -94,6 +96,45 @@ export const workoutSessionService = {
     if (!session) throw AppError.notFound("Workout session not found");
     if (session.userId !== userId) throw AppError.forbidden();
     return toWorkoutSessionResponse(await workoutSessionRepository.delete(sessionId));
+  },
+
+  // Append an extra exercise to a session that's already underway. Lets the
+  // user log mid-workout bonus work without polluting the underlying plan
+  // template — the new row has workoutTableRowId = null so the plan stays
+  // exactly as the user set it up.
+  addRow: async (
+    userId: string,
+    sessionId: string,
+    { exerciseId, plannedSets, plannedTargetValue, notes }: AddSessionRowDTO,
+  ): Promise<WorkoutSessionResponseDTO> => {
+    const session = await workoutSessionRepository.findById(sessionId);
+    if (!session) throw AppError.notFound("Workout session not found");
+    if (session.userId !== userId) throw AppError.forbidden();
+    if (session.status !== "started") {
+      throw AppError.badRequest("Cannot add exercises to a session that's not in progress");
+    }
+
+    const exercise = await exerciseRepository.findById(exerciseId);
+    if (!exercise) throw AppError.notFound("Exercise not found");
+    if (!exercise.isGlobal && exercise.ownerUserId !== userId) {
+      throw AppError.forbidden();
+    }
+
+    const maxOrder = await workoutSessionRowRepository.findMaxOrderIndex(sessionId);
+    await workoutSessionRowRepository.create({
+      workoutSessionId: sessionId,
+      workoutTableRowId: null,
+      exerciseId,
+      plannedSetsSnapshot: plannedSets,
+      plannedTargetValueSnapshot: plannedTargetValue,
+      measurementTypeSnapshot: exercise.measurementType,
+      orderIndex: (maxOrder ?? -1) + 1,
+      notes: notes ?? null,
+    });
+
+    const updated = await workoutSessionRepository.findByIdWithDetails(sessionId);
+    if (!updated) throw AppError.notFound("Workout session not found");
+    return toWorkoutSessionResponse(updated);
   },
 
   logRestDay: async (userId: string, { date, notes }: LogRestDayDTO): Promise<WorkoutSessionResponseDTO> => {

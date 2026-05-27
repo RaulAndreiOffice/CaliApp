@@ -13,3 +13,10 @@ export const logRestDaySchema = z.object({
   date: z.iso.datetime().optional(),
   notes: z.string().max(500).optional(),
 });
+
+export const addSessionRowSchema = z.object({
+  exerciseId: z.uuid(),
+  plannedSets: z.number().int().min(1).max(50),
+  plannedTargetValue: z.number().positive().max(10_000),
+  notes: z.string().max(500).optional(),
+});

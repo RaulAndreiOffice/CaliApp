@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tansta
 import { workoutSessionApi } from '../../api/workoutSession.api';
 import { QUERY_KEYS } from '../../utils/constants';
 import type {
+  AddSessionRowRequest,
   LogRestDayRequest,
   StartSessionRequest,
   UpdateSessionRequest,
@@ -83,6 +84,23 @@ export function useDeleteSession() {
     onSuccess: (_, id) => {
       invalidateSessionDependentQueries(qc);
       qc.removeQueries({ queryKey: QUERY_KEYS.WORKOUT_SESSION(id) });
+    },
+  });
+}
+
+export function useAddSessionRow(sessionId: string | null) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AddSessionRowRequest) => {
+      if (!sessionId) throw new Error('No active session');
+      return workoutSessionApi.addRow(sessionId, data);
+    },
+    onSuccess: (session) => {
+      if (sessionId) {
+        qc.setQueryData(QUERY_KEYS.WORKOUT_SESSION(sessionId), session);
+        invalidateSessionDependentQueries(qc);
+        qc.invalidateQueries({ queryKey: QUERY_KEYS.WORKOUT_SESSION(sessionId) });
+      }
     },
   });
 }

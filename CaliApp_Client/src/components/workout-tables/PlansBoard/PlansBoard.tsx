@@ -10,6 +10,7 @@ import { Dialog } from '../../ui/Dialog';
 import { EmptyState } from '../../common/EmptyState/EmptyState';
 import { LoadingSpinner } from '../../common/LoadingSpinner/LoadingSpinner';
 import { WorkoutTableForm } from '../WorkoutTableForm/WorkoutTableForm';
+import { AddSessionExerciseDialog } from '../../workout-sessions/AddSessionExerciseDialog/AddSessionExerciseDialog';
 import {
   useCreateWorkoutTable,
   useWorkoutTable,
@@ -26,6 +27,115 @@ import type { WorkoutSessionRow } from '../../../types/workoutSession.types';
 
 type SetValue = number | null;
 type EditingCell = { rowId: string; setIndex: number } | null;
+
+// Ad-hoc extras (session rows without a workoutTableRowId) get their own
+// inline editor so the planned-row state machine stays untouched — the
+// underlying performed-set upsert is the same, just keyed straight off the
+// session row.
+function ExtraExerciseRow({
+  sessionRow,
+  sessionId,
+}: Readonly<{ sessionRow: WorkoutSessionRow; sessionId: string }>) {
+  const { t } = useLanguage();
+  const upsertSet = useUpsertPerformedSet(sessionId);
+  const [editing, setEditing] = useState<number | null>(null);
+  const [input, setInput] = useState('');
+
+  const isTime = sessionRow.measurementTypeSnapshot === 'time';
+  const unit = isTime ? t('common.seconds') : '';
+  const plannedSets = sessionRow.plannedSetsSnapshot ?? 0;
+  const plannedTarget = sessionRow.plannedTargetValueSnapshot ?? 0;
+  const exerciseName = sessionRow.exercise?.name ?? sessionRow.exerciseName ?? '—';
+
+  const getVal = (setIndex: number): SetValue => {
+    const set = sessionRow.performedSets?.find((s) => s.setNumber === setIndex + 1);
+    return set?.actualValue ?? null;
+  };
+
+  const commit = (setIndex: number, raw: string) => {
+    setEditing(null);
+    setInput('');
+    const num = Number.parseInt(raw, 10);
+    if (Number.isNaN(num) || num < 0) return;
+    const existing = sessionRow.performedSets?.find((s) => s.setNumber === setIndex + 1);
+    if (existing?.actualValue === num) return;
+    upsertSet.mutate(
+      {
+        rowId: sessionRow.id,
+        setNumber: setIndex + 1,
+        actualValue: num,
+        existingSetId: existing?.id,
+      },
+      { onError: () => toast.error(t('plans.toast.setSaveFailed')) },
+    );
+  };
+
+  return (
+    <div className="bg-muted/20 border border-primary/20 rounded-lg px-3 py-2.5">
+      <div className="flex items-center justify-between mb-2">
+        <span className="font-medium text-sm">{exerciseName}</span>
+        <span className="text-xs text-muted-foreground tabular-nums">
+          {plannedSets} × {plannedTarget}{unit}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {Array.from({ length: plannedSets }, (_, i) => i).map((setIndex) => {
+          const val = getVal(setIndex);
+          const isDone = val !== null;
+          const isEditing = editing === setIndex;
+          return (
+            <div key={setIndex} className="flex flex-col items-center gap-0.5">
+              <span className="text-[10px] text-muted-foreground/60 tabular-nums">
+                S{setIndex + 1}
+              </span>
+              {isEditing ? (
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min={0}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') commit(setIndex, input);
+                    if (e.key === 'Escape') {
+                      setEditing(null);
+                      setInput('');
+                    }
+                  }}
+                  onBlur={() => commit(setIndex, input)}
+                  placeholder={String(plannedTarget)}
+                  autoFocus
+                  aria-label={t('plans.cell.enter', { n: setIndex + 1 })}
+                  className="w-14 h-11 sm:w-12 sm:h-9 text-center bg-primary/10 border border-primary rounded-md text-sm font-mono focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditing(setIndex);
+                    setInput(isDone ? String(val) : '');
+                  }}
+                  title={t('plans.cell.enter', { n: setIndex + 1 })}
+                  className={cn(
+                    'w-14 h-11 sm:w-12 sm:h-9 rounded-md text-sm font-mono transition-all touch-manipulation',
+                    isDone
+                      ? 'bg-primary/20 text-primary border border-primary/50 font-semibold'
+                      : 'bg-muted/40 border border-dashed border-border text-muted-foreground hover:border-primary/60 hover:text-foreground cursor-pointer',
+                  )}
+                >
+                  {isDone ? `${val}${unit}` : '—'}
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      {sessionRow.notes && (
+        <p className="text-xs text-muted-foreground mt-2 italic">{sessionRow.notes}</p>
+      )}
+    </div>
+  );
+}
 
 function formatTime(s: number) {
   const m = Math.floor(s / 60);
@@ -76,11 +186,21 @@ export function PlansBoard() {
   }, [isActive, activeSession]);
 
   const [createOpen, setCreateOpen] = useState(false);
+  const [addExtraOpen, setAddExtraOpen] = useState(false);
   const [selectedIdLocal, setSelectedIdLocal] = useState<string>('');
   const [editingCell, setEditingCell] = useState<EditingCell>(null);
   const [inputValue, setInputValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
+
+  // Ad-hoc rows added mid-session (workoutTableRowId === null). Sorted by
+  // orderIndex so the order the user added them in is preserved.
+  const extraSessionRows = useMemo<WorkoutSessionRow[]>(() => {
+    if (!isActive) return [];
+    return (activeSession?.rows ?? [])
+      .filter((r) => !r.workoutTableRowId)
+      .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+  }, [isActive, activeSession]);
 
   // While a workout is active, force the selected tab to the active table.
   const selectedId = isActive && activeTableId ? activeTableId : selectedIdLocal;
@@ -203,11 +323,21 @@ export function PlansBoard() {
     );
   };
 
-  const totalSets = sortedRows.reduce((s, r) => s + r.plannedSets, 0);
-  const completedSets = sortedRows.reduce((s, r) => {
+  const plannedTotalSets = sortedRows.reduce((s, r) => s + r.plannedSets, 0);
+  const plannedCompletedSets = sortedRows.reduce((s, r) => {
     const sessionRow = sessionRowByTableRowId.get(r.id);
     return s + (sessionRow?.performedSets?.length ?? 0);
   }, 0);
+  const extraTotalSets = extraSessionRows.reduce(
+    (s, r) => s + (r.plannedSetsSnapshot ?? r.plannedSets ?? 0),
+    0,
+  );
+  const extraCompletedSets = extraSessionRows.reduce(
+    (s, r) => s + (r.performedSets?.length ?? 0),
+    0,
+  );
+  const totalSets = plannedTotalSets + extraTotalSets;
+  const completedSets = plannedCompletedSets + extraCompletedSets;
   const progress = totalSets > 0 ? completedSets / totalSets : 0;
 
   if (isLoading) return <LoadingSpinner label={t('common.loading')} />;
@@ -314,6 +444,14 @@ export function PlansBoard() {
                 )}
                 {isActive ? (
                   <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setAddExtraOpen(true)}
+                      className="flex items-center gap-1.5 bg-card border border-primary/30 text-primary px-3 min-h-[36px] rounded-lg text-xs font-medium hover:bg-primary/10 transition-colors"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      {t('plans.addExtra.button')}
+                    </button>
                     <button
                       type="button"
                       onClick={reset}
@@ -517,6 +655,28 @@ export function PlansBoard() {
                   </div>
                 );
               })}
+
+              {isActive && extraSessionRows.length > 0 && (
+                <section className="mt-3 pt-3 border-t border-border/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-xs font-semibold uppercase text-muted-foreground tracking-normal">
+                      {t('plans.addExtra.section')}
+                    </h3>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {extraCompletedSets}/{extraTotalSets}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {extraSessionRows.map((row) => (
+                      <ExtraExerciseRow
+                        key={row.id}
+                        sessionRow={row}
+                        sessionId={activeSessionId!}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
             </div>
           )}
 
@@ -552,6 +712,11 @@ export function PlansBoard() {
           submitLabel={t('plans.create.submit')}
         />
       </Dialog>
+      <AddSessionExerciseDialog
+        sessionId={isActive ? activeSessionId : null}
+        open={addExtraOpen}
+        onClose={() => setAddExtraOpen(false)}
+      />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { workoutSessionController } from "../controllers/workoutSession.controll
 import { performedSetController } from "../controllers/performedSet.controller";
 import { authenticate } from "../middleware/authenticate";
 import { validate } from "../middleware/validate";
-import { logRestDaySchema, startSessionSchema, updateSessionSchema } from "../validators/workoutSession.validator";
+import { addSessionRowSchema, logRestDaySchema, startSessionSchema, updateSessionSchema } from "../validators/workoutSession.validator";
 import { createPerformedSetSchema, updatePerformedSetSchema } from "../validators/performedSet.validator";
 
 const router = Router();
@@ -17,6 +17,7 @@ router.get("/:id", workoutSessionController.getById);
 router.post("/", validate(startSessionSchema), workoutSessionController.start);
 router.patch("/:id", validate(updateSessionSchema), workoutSessionController.update);
 router.delete("/:id", workoutSessionController.delete);
+router.post("/:id/rows", validate(addSessionRowSchema), workoutSessionController.addRow);
 
 // Performed Sets
 router.post("/:sessionId/rows/:rowId/sets", validate(createPerformedSetSchema), performedSetController.create);
