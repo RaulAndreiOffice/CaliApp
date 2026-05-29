@@ -57,9 +57,6 @@ export const workoutTableRowService = {
       throw AppError.badRequest("Invalid row order for this workout table");
     }
 
-    const updates = orderedIds.map((id, index) =>
-      workoutTableRowRepository.update(id, { orderIndex: index })
-    );
-    await Promise.all(updates);
+    await workoutTableRowRepository.reorder(orderedIds);
   },
 };

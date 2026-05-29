@@ -35,6 +35,29 @@ export const workoutTableRowRepository = {
   update: (id: string, data: any) =>
     prisma.workoutTableRow.update({ where: { id }, data }),
 
+  reorder: async (orderedIds: string[]) => {
+    const offset = orderedIds.length + 1000;
+    await prisma.$transaction(async (tx) => {
+      await Promise.all(
+        orderedIds.map((id, index) =>
+          tx.workoutTableRow.update({
+            where: { id },
+            data: { orderIndex: offset + index },
+          }),
+        ),
+      );
+
+      await Promise.all(
+        orderedIds.map((id, index) =>
+          tx.workoutTableRow.update({
+            where: { id },
+            data: { orderIndex: index },
+          }),
+        ),
+      );
+    });
+  },
+
   syncExerciseDefaultsForUser: async (ownerUserId: string, exerciseId: string, data: UpdateExerciseDTO) => {
     const syncData = getPlanSyncData(data);
     if (Object.keys(syncData).length === 0) {

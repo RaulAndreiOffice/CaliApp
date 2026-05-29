@@ -3,12 +3,3 @@ export interface SuccessResponseDTO<T> {
   data: T;
   meta?: any;
 }
-
-export interface ErrorResponseDTO {
-  success: false;
-  error: {
-    code: string;
-    message: string;
-    details?: any;
-  };
-}

@@ -83,7 +83,14 @@ export const authService = {
   refresh: async (refreshToken: string): Promise<TokensResponseDTO> => {
     const tokenHash = hashToken(refreshToken);
     const stored = await refreshTokenRepository.findByTokenHash(tokenHash);
-    if (!stored) throw AppError.unauthorized("Invalid refresh token");
+    if (!stored) {
+      // The token isn't active. If it nonetheless exists (already rotated or
+      // revoked), it's being replayed — a sign of theft. Revoke the whole
+      // family so the attacker and victim are both forced to re-authenticate.
+      const reused = await refreshTokenRepository.findByTokenHashAny(tokenHash);
+      if (reused) await refreshTokenRepository.revokeAllForUser(reused.userId);
+      throw AppError.unauthorized("Invalid refresh token");
+    }
     if (stored.expiresAt < new Date()) throw AppError.unauthorized("Refresh token expired");
 
     await refreshTokenRepository.revoke(stored.id);

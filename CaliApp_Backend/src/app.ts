@@ -19,6 +19,7 @@ app.use(cors({
     }
     callback(new Error("Not allowed by CORS"));
   },
+  credentials: true,
 }));
 app.use(express.json({ limit: "100kb" }));
 

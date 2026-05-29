@@ -10,7 +10,7 @@ import statsRoutes from "./stats.routes";
 const router = Router();
 
 router.get("/health", (_req, res) => {
-  res.status(200).json({ status: "ok", uptime: process.uptime() });
+  res.status(200).json({ status: "ok" });
 });
 
 router.use("/auth", authRoutes);

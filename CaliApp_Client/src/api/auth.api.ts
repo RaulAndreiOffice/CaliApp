@@ -18,14 +18,13 @@ export const authApi = {
     return res.data.data;
   },
 
-  async refresh(refreshToken: string): Promise<AuthTokens> {
-    const res = await api.post<ApiResponse<AuthTokens>>('/auth/refresh', {
-      refreshToken,
-    });
+  // The refresh token is sent automatically as an httpOnly cookie.
+  async refresh(): Promise<AuthTokens> {
+    const res = await api.post<ApiResponse<AuthTokens>>('/auth/refresh');
     return res.data.data;
   },
 
-  async logout(refreshToken: string): Promise<void> {
-    await api.post('/auth/logout', { refreshToken });
+  async logout(): Promise<void> {
+    await api.post('/auth/logout');
   },
 };

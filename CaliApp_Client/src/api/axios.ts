@@ -5,6 +5,8 @@ import type { AuthTokens } from '../types/auth.types';
 
 export const api = axios.create({
   baseURL: API_URL,
+  // Send the httpOnly refresh-token cookie on auth requests.
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -36,16 +38,15 @@ function shouldRefreshToken(token: string | null): boolean {
 async function refreshTokens(): Promise<AuthTokens> {
   if (refreshPromise) return refreshPromise;
 
-  const { refreshToken, updateTokens, logout } = useAuthStore.getState();
-  if (!refreshToken) {
-    logout();
-    throw new Error('Missing refresh token');
-  }
+  const { updateTokens, logout } = useAuthStore.getState();
 
+  // The refresh token lives in an httpOnly cookie; `withCredentials` sends it.
   refreshPromise = axios
-    .post<{ success: true; data: AuthTokens }>(`${API_URL}/auth/refresh`, {
-      refreshToken,
-    })
+    .post<{ success: true; data: AuthTokens }>(
+      `${API_URL}/auth/refresh`,
+      undefined,
+      { withCredentials: true }
+    )
     .then((response) => {
       const tokens = response.data.data;
       updateTokens(tokens);

@@ -12,7 +12,6 @@ export function useLogin() {
     onSuccess: (data) => {
       login(data.user, {
         accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
       });
     },
   });
@@ -25,7 +24,6 @@ export function useRegister() {
     onSuccess: (data) => {
       login(data.user, {
         accessToken: data.accessToken,
-        refreshToken: data.refreshToken,
       });
     },
   });
@@ -33,15 +31,13 @@ export function useRegister() {
 
 export function useLogout() {
   const queryClient = useQueryClient();
-  const { refreshToken, logout } = useAuthStore.getState();
+  const { logout } = useAuthStore.getState();
   return useMutation({
     mutationFn: async () => {
-      if (refreshToken) {
-        try {
-          await authApi.logout(refreshToken);
-        } catch {
-          /* ignore */
-        }
+      try {
+        await authApi.logout();
+      } catch {
+        /* ignore */
       }
     },
     onSettled: () => {
