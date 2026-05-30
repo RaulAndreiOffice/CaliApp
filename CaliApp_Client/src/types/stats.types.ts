@@ -180,9 +180,35 @@ export interface WeeklyVolumePoint {
   totalSets: number;
 }
 
+export interface CardioWeekPoint {
+  weekStart: string;
+  label: string;
+  runs: number;
+  distanceKm: number;
+  strengthSessions: number;
+  cardioPercentage: number;
+}
+
+export interface CardioInsights {
+  totalActivities: number;
+  strengthSessions: number;
+  cardioActivities: number;
+  cardioPercentage: number;
+  totalDistanceKm: number;
+  totalDurationMinutes: number;
+  avgDistanceKm: number;
+  balanceLevel: 'none' | 'low' | 'balanced' | 'high';
+  thisWeekRuns: number;
+  lastWeekRuns: number;
+  thisWeekDistanceKm: number;
+  lastWeekDistanceKm: number;
+  weekly: CardioWeekPoint[];
+}
+
 export interface ProgressInsights {
   exercises: ExerciseInsight[];
   workoutPercentages: WorkoutPercentages;
   weeklyTrend: WeeklyVolumePoint[];
+  cardio: CardioInsights;
   learningState: LearningState;
 }

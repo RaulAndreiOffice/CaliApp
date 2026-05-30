@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Moon, Trash2 } from 'lucide-react';
+import { Footprints, Moon, Trash2 } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
@@ -9,6 +9,7 @@ import { Dialog } from '../../../components/ui/Dialog';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner/LoadingSpinner';
 import { EmptyState } from '../../../components/common/EmptyState/EmptyState';
 import { Pagination } from '../../../components/common/Pagination/Pagination';
+import { LogRunDialog } from '../../../components/workout-sessions/LogRunDialog/LogRunDialog';
 import {
   useDeleteSession,
   useLogRestDay,
@@ -26,12 +27,14 @@ const STATUS_KEY: Record<WorkoutSessionStatus, TranslationKey> = {
   completed: 'sessions.status.completed',
   cancelled: 'sessions.status.cancelled',
   rest: 'sessions.status.rest',
+  cardio: 'sessions.status.cardio',
 };
 
-function statusVariant(status: WorkoutSessionStatus): 'success' | 'info' | 'danger' | 'default' {
+function statusVariant(status: WorkoutSessionStatus): 'success' | 'info' | 'danger' | 'default' | 'time' {
   if (status === 'completed') return 'success';
   if (status === 'started') return 'info';
   if (status === 'cancelled') return 'danger';
+  if (status === 'cardio') return 'time';
   return 'default';
 }
 
@@ -46,6 +49,7 @@ export function WorkoutSessionsPage() {
   const endWorkoutInStore = useWorkoutStore((s) => s.endSession);
   const { t } = useLanguage();
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [runOpen, setRunOpen] = useState(false);
 
   const totalPages = data ? Math.ceil(data.meta.total / data.meta.limit) : 1;
 
@@ -83,15 +87,25 @@ export function WorkoutSessionsPage() {
             {t('sessions.subtitle')}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleRestDay}
-          disabled={logRestDay.isPending}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border border-border text-muted-foreground text-sm font-medium hover:text-foreground hover:border-[#06b6d4]/60 hover:bg-[#06b6d4]/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors self-start"
-        >
-          <Moon className="w-4 h-4" />
-          {t('sessions.markRestDay')}
-        </button>
+        <div className="flex items-center gap-2 self-start flex-wrap">
+          <button
+            type="button"
+            onClick={() => setRunOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border border-border text-muted-foreground text-sm font-medium hover:text-foreground hover:border-primary/60 hover:bg-primary/10 transition-colors"
+          >
+            <Footprints className="w-4 h-4" />
+            {t('sessions.run.button')}
+          </button>
+          <button
+            type="button"
+            onClick={handleRestDay}
+            disabled={logRestDay.isPending}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border border-border text-muted-foreground text-sm font-medium hover:text-foreground hover:border-[#06b6d4]/60 hover:bg-[#06b6d4]/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            <Moon className="w-4 h-4" />
+            {t('sessions.markRestDay')}
+          </button>
+        </div>
       </div>
 
       {!data || data.items.length === 0 ? (
@@ -105,12 +119,14 @@ export function WorkoutSessionsPage() {
             {data.items.map((session) => {
               const rows = session.rows ?? [];
               const isRest = session.status === 'rest';
+              const isCardio = session.status === 'cardio';
+              const isStrength = !isRest && !isCardio;
               const totalSets = rows.reduce(
                 (acc, r) => acc + (r.performedSets?.length ?? 0),
                 0,
               );
               const duration =
-                !isRest && session.completedAt
+                isStrength && session.completedAt
                   ? Math.floor(
                       (new Date(session.completedAt).getTime() -
                         new Date(session.startedAt).getTime()) /
@@ -130,10 +146,11 @@ export function WorkoutSessionsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           {isRest && <Moon className="w-4 h-4 text-[#06b6d4] shrink-0" />}
+                          {isCardio && <Footprints className="w-4 h-4 text-[#06b6d4] shrink-0" />}
                           <h3 className="font-medium text-base sm:text-lg truncate">
-                            {isRest
-                              ? t('sessions.card.restDay')
-                              : (session.workoutTableName ?? t('sessions.card.freeWorkout'))}
+                            {isRest && t('sessions.card.restDay')}
+                            {isCardio && t('sessions.card.run')}
+                            {isStrength && (session.workoutTableName ?? t('sessions.card.freeWorkout'))}
                           </h3>
                           <Badge
                             variant={statusVariant(session.status)}
@@ -145,13 +162,28 @@ export function WorkoutSessionsPage() {
                         <p className="text-xs sm:text-sm text-muted-foreground">
                           {formatDate(session.startedAt)}
                         </p>
-                        {isRest && session.notes && (
+                        {(isRest || isCardio) && session.notes && (
                           <p className="text-xs sm:text-sm text-muted-foreground/80 mt-1 italic">
                             {session.notes}
                           </p>
                         )}
                       </div>
                       <div className="flex items-start gap-2 shrink-0">
+                        {isCardio && session.distanceKm != null && (
+                          <div className="text-left sm:text-right">
+                            <p className="text-xs sm:text-sm text-muted-foreground">
+                              {t('sessions.card.distance')}
+                            </p>
+                            <p className="font-medium">
+                              {session.distanceKm} km
+                              {session.durationMinutes != null && (
+                                <span className="text-muted-foreground font-normal">
+                                  {' · '}{session.durationMinutes} {t('common.minutes')}
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                        )}
                         {duration !== null && (
                           <div className="text-left sm:text-right">
                             <p className="text-xs sm:text-sm text-muted-foreground">
@@ -176,7 +208,7 @@ export function WorkoutSessionsPage() {
                     </div>
 
                     {/* Exercise breakdowns */}
-                    {!isRest && rows.length > 0 && (
+                    {isStrength && rows.length > 0 && (
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                         {rows.map((row) => {
                           const name =
@@ -221,7 +253,7 @@ export function WorkoutSessionsPage() {
                     )}
 
                     {/* Footer */}
-                    {!isRest && (
+                    {isStrength && (
                       <div className="flex flex-wrap gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground pt-2 border-t border-border">
                         <span>{t('sessions.card.totalSets')}: {totalSets}</span>
                       </div>
@@ -268,6 +300,8 @@ export function WorkoutSessionsPage() {
           {t('sessions.confirmDelete.desc')}
         </p>
       </Dialog>
+
+      <LogRunDialog open={runOpen} onClose={() => setRunOpen(false)} />
     </div>
   );
 }

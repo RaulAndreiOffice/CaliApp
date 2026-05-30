@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Clock, Calendar, Pencil, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Clock, Calendar, Footprints, Pencil, Trash2, X } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../../../components/ui/Card';
 import { Badge } from '../../../components/ui/Badge';
 import { Button } from '../../../components/ui/Button';
@@ -17,8 +17,18 @@ import { useDeleteSet, useUpdateSet } from '../../../hooks/api/usePerformedSets'
 import { useWorkoutStore } from '../../../stores/workout.store';
 import { useLanguage } from '../../../contexts/LanguageContext';
 import { formatDate } from '../../../utils/formatters';
+import type { TranslationKey } from '../../../i18n/translations';
+import type { WorkoutSessionStatus } from '../../../types/workoutSession.types';
 
 type EditingCell = { rowId: string; setId: string } | null;
+
+const STATUS_KEY: Record<WorkoutSessionStatus, TranslationKey> = {
+  started: 'sessions.status.started',
+  completed: 'sessions.status.completed',
+  cancelled: 'sessions.status.cancelled',
+  rest: 'sessions.status.rest',
+  cardio: 'sessions.status.cardio',
+};
 
 export function WorkoutSessionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -113,10 +123,15 @@ export function WorkoutSessionDetailPage() {
     });
   };
 
-  let statusVariant: 'success' | 'info' | 'danger';
+  const isCardio = session.status === 'cardio';
+  const isRest = session.status === 'rest';
+
+  let statusVariant: 'success' | 'info' | 'danger' | 'default' | 'time';
   if (session.status === 'completed') statusVariant = 'success';
   else if (session.status === 'started') statusVariant = 'info';
-  else statusVariant = 'danger';
+  else if (session.status === 'cancelled') statusVariant = 'danger';
+  else if (isCardio) statusVariant = 'time';
+  else statusVariant = 'default';
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -133,7 +148,9 @@ export function WorkoutSessionDetailPage() {
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2 truncate">
-            {session.workoutTableName ?? t('workout.title')}
+            {isCardio && t('sessions.card.run')}
+            {isRest && t('sessions.card.restDay')}
+            {!isCardio && !isRest && (session.workoutTableName ?? t('workout.title'))}
           </h1>
           {session.notes && (
             <p className="text-sm sm:text-base text-muted-foreground">
@@ -142,7 +159,7 @@ export function WorkoutSessionDetailPage() {
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          <Badge variant={statusVariant}>{session.status}</Badge>
+          <Badge variant={statusVariant}>{t(STATUS_KEY[session.status])}</Badge>
           <Button
             variant="secondary"
             size="sm"
@@ -163,6 +180,44 @@ export function WorkoutSessionDetailPage() {
       </div>
 
       {/* Stats cards */}
+      {isCardio ? (
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+          <Card>
+            <CardContent className="pt-3 sm:pt-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="text-xs sm:text-sm">{t('sessionDetail.stat.date')}</span>
+              </div>
+              <p className="text-lg sm:text-xl font-bold">{formatDate(session.startedAt)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-3 sm:pt-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <Footprints className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="text-xs sm:text-sm">{t('sessions.run.distance')}</span>
+              </div>
+              <p className="text-lg sm:text-xl font-bold">
+                {session.distanceKm != null ? `${session.distanceKm} km` : '—'}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="pt-3 sm:pt-4">
+              <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <span className="text-xs sm:text-sm">{t('sessionDetail.stat.duration')}</span>
+              </div>
+              <p className="text-lg sm:text-xl font-bold">
+                {session.durationMinutes != null
+                  ? `${session.durationMinutes} ${t('common.minutes')}`
+                  : '—'}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+      <>
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardContent className="pt-3 sm:pt-4">
@@ -306,6 +361,8 @@ export function WorkoutSessionDetailPage() {
           </div>
         </CardContent>
       </Card>
+      </>
+      )}
 
       <Dialog
         open={confirmDeleteOpen}

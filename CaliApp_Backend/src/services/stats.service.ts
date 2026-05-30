@@ -14,6 +14,8 @@ import type {
   WeeklyTrainingLoadPointDTO,
 } from "../dtos/stats/training-load-dashboard.dto";
 import type {
+  CardioInsightsDTO,
+  CardioWeekPointDTO,
   CategoryShareDTO,
   ExerciseInsightDTO,
   ExerciseInsightWarningDTO,
@@ -787,12 +789,23 @@ export const statsService = {
     const end = addDays(currentWeek, 7);
     const last7DaysStart = addDays(new Date(new Date().setHours(0, 0, 0, 0)), -6);
 
-    const [sessions, historyStats] = await Promise.all([
+    const [sessions, historyStats, cardioAgg, cardioSessions] = await Promise.all([
       getCompletedSessionsInRange(userId, firstWeek, end),
       prisma.workoutSession.aggregate({
         where: { userId, status: "completed" },
         _count: { _all: true },
         _min: { startedAt: true },
+      }),
+      // Cardio totals are all-time so the headline percentage matches the user's
+      // mental model ("2 runs of 6 activities = 33%"), independent of the chart window.
+      prisma.workoutSession.aggregate({
+        where: { userId, status: "cardio" },
+        _count: { _all: true },
+        _sum: { distanceKm: true, durationMinutes: true },
+      }),
+      prisma.workoutSession.findMany({
+        where: { userId, status: "cardio", startedAt: { gte: firstWeek, lt: end } },
+        select: { startedAt: true, distanceKm: true },
       }),
     ]);
 
@@ -884,6 +897,68 @@ export const statsService = {
       };
     });
 
-    return { exercises, workoutPercentages, weeklyTrend, learningState };
+    // ── strength-vs-cardio balance ──────────────────────────────────────────
+    // Reuse weeklyAgg's per-week completed-session counts as the strength side,
+    // and bucket the manually entered runs by week for the same window.
+    const round1 = (n: number) => Math.round(n * 10) / 10;
+    const cardioWeekly = Array.from({ length: safeWeeks }, () => ({ runs: 0, distanceKm: 0 }));
+    for (const run of cardioSessions) {
+      const weekIndex = Math.floor(
+        (startOfWeek(run.startedAt).getTime() - firstWeek.getTime()) /
+          (7 * 24 * 60 * 60 * 1000),
+      );
+      if (weekIndex >= 0 && weekIndex < safeWeeks) {
+        cardioWeekly[weekIndex].runs += 1;
+        cardioWeekly[weekIndex].distanceKm += run.distanceKm ?? 0;
+      }
+    }
+
+    const cardioWeeklyPoints: CardioWeekPointDTO[] = cardioWeekly.map((wk, idx) => {
+      const weekStart = addDays(firstWeek, idx * 7);
+      const strengthSessions = weeklyAgg[idx].sessionIds.size;
+      const weekTotal = wk.runs + strengthSessions;
+      return {
+        weekStart,
+        label: formatWeekLabel(weekStart),
+        runs: wk.runs,
+        distanceKm: round1(wk.distanceKm),
+        strengthSessions,
+        cardioPercentage: weekTotal > 0 ? Math.round((wk.runs / weekTotal) * 100) : 0,
+      };
+    });
+
+    const strengthSessionsAllTime = learningState.completedSessions;
+    const cardioActivities = cardioAgg._count._all;
+    const totalActivities = strengthSessionsAllTime + cardioActivities;
+    const cardioPercentage =
+      totalActivities > 0 ? Math.round((cardioActivities / totalActivities) * 100) : 0;
+    const totalDistanceKm = round1(cardioAgg._sum.distanceKm ?? 0);
+
+    let balanceLevel: CardioInsightsDTO["balanceLevel"];
+    if (cardioActivities === 0) balanceLevel = "none";
+    else if (cardioPercentage < 20) balanceLevel = "low";
+    else if (cardioPercentage <= 40) balanceLevel = "balanced";
+    else balanceLevel = "high";
+
+    const thisWeekPoint = cardioWeeklyPoints[cardioWeeklyPoints.length - 1];
+    const lastWeekPoint = cardioWeeklyPoints[cardioWeeklyPoints.length - 2];
+
+    const cardio: CardioInsightsDTO = {
+      totalActivities,
+      strengthSessions: strengthSessionsAllTime,
+      cardioActivities,
+      cardioPercentage,
+      totalDistanceKm,
+      totalDurationMinutes: cardioAgg._sum.durationMinutes ?? 0,
+      avgDistanceKm: cardioActivities > 0 ? round1(totalDistanceKm / cardioActivities) : 0,
+      balanceLevel,
+      thisWeekRuns: thisWeekPoint?.runs ?? 0,
+      lastWeekRuns: lastWeekPoint?.runs ?? 0,
+      thisWeekDistanceKm: thisWeekPoint?.distanceKm ?? 0,
+      lastWeekDistanceKm: lastWeekPoint?.distanceKm ?? 0,
+      weekly: cardioWeeklyPoints,
+    };
+
+    return { exercises, workoutPercentages, weeklyTrend, cardio, learningState };
   },
 };

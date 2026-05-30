@@ -3,6 +3,7 @@ import { workoutSessionApi } from '../../api/workoutSession.api';
 import { QUERY_KEYS } from '../../utils/constants';
 import type {
   AddSessionRowRequest,
+  LogCardioRequest,
   LogRestDayRequest,
   StartSessionRequest,
   UpdateSessionRequest,
@@ -109,6 +110,14 @@ export function useLogRestDay() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: LogRestDayRequest = {}) => workoutSessionApi.logRestDay(data),
+    onSuccess: () => invalidateSessionDependentQueries(qc),
+  });
+}
+
+export function useLogCardio() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: LogCardioRequest) => workoutSessionApi.logCardio(data),
     onSuccess: () => invalidateSessionDependentQueries(qc),
   });
 }

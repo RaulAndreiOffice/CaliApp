@@ -12,6 +12,8 @@ export interface WorkoutSessionResponseDTO {
   startedAt: Date;
   completedAt: Date | null;
   status: SessionStatus;
+  distanceKm: number | null;
+  durationMinutes: number | null;
   notes: string | null;
   createdAt: Date;
   rows?: WorkoutSessionRowResponseDTO[];

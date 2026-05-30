@@ -15,6 +15,7 @@ const STATUS_KEY: Record<WorkoutSessionStatus, TranslationKey> = {
   completed: 'sessions.status.completed',
   cancelled: 'sessions.status.cancelled',
   rest: 'sessions.status.rest',
+  cardio: 'sessions.status.cardio',
 };
 
 export function SessionCard({ session, completionRate }: Readonly<SessionCardProps>) {
@@ -24,7 +25,13 @@ export function SessionCard({ session, completionRate }: Readonly<SessionCardPro
     completed: 'success',
     cancelled: 'danger',
     rest: 'default',
+    cardio: 'time',
   } as const;
+
+  const title =
+    session.status === 'cardio'
+      ? t('sessions.card.run')
+      : (session.workoutTableName ?? t('sessions.card.freeWorkout'));
 
   return (
     <Link
@@ -33,7 +40,10 @@ export function SessionCard({ session, completionRate }: Readonly<SessionCardPro
     >
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm sm:text-base truncate">
-          {session.workoutTableName ?? t('sessions.card.freeWorkout')}
+          {title}
+          {session.status === 'cardio' && session.distanceKm != null && (
+            <span className="text-muted-foreground font-normal"> · {session.distanceKm} km</span>
+          )}
         </p>
         <p className="text-xs sm:text-sm text-muted-foreground">
           {formatRelativeTime(session.startedAt)}

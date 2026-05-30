@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import toast from 'react-hot-toast';
 import {
   Activity, Zap, Target, TrendingUp, GripVertical,
-  X, Plus, LayoutDashboard, Check, Clock, Moon,
+  X, Plus, LayoutDashboard, Check, Clock, Moon, Footprints,
   LineChart as LineChartIcon, BarChart3, PieChart as PieChartIcon, AlertTriangle,
 } from 'lucide-react';
 import { Badge } from '../../../components/ui/Badge';
@@ -13,7 +14,9 @@ import { LoadingSpinner } from '../../../components/common/LoadingSpinner/Loadin
 import { WeeklyProgressChart } from '../../../components/dashboard/WeeklyProgressChart/WeeklyProgressChart';
 import { ExerciseTrendList } from '../../../components/dashboard/ExerciseTrendList/ExerciseTrendList';
 import { WorkoutPercentages } from '../../../components/dashboard/WorkoutPercentages/WorkoutPercentages';
+import { CardioBalance } from '../../../components/dashboard/CardioBalance/CardioBalance';
 import { SmartWarnings } from '../../../components/dashboard/SmartWarnings/SmartWarnings';
+import { LogRunDialog } from '../../../components/workout-sessions/LogRunDialog/LogRunDialog';
 import { useWidgetReorder } from '../../../hooks/useWidgetReorder';
 import { useEditableWidgets } from '../../../hooks/useEditableWidgets';
 import { useLanguage } from '../../../contexts/LanguageContext';
@@ -41,6 +44,7 @@ const CATALOG: Record<string, WidgetMeta> = {
   'stat-streak':         { titleKey: 'dashboard.widget.streak.title',         descKey: 'dashboard.widget.streak.desc',         size: 'sm', icon: Zap },
   'stat-exercises':      { titleKey: 'dashboard.widget.exercises.title',      descKey: 'dashboard.widget.exercises.desc',      size: 'sm', icon: Target },
   'stat-consistency':    { titleKey: 'dashboard.widget.consistency.title',    descKey: 'dashboard.widget.consistency.desc',    size: 'sm', icon: TrendingUp },
+  'progress-cardio':     { titleKey: 'dashboard.cardio.title',                descKey: 'dashboard.cardio.desc',                size: 'lg', icon: Footprints },
   'progress-weekly':     { titleKey: 'dashboard.progress.weekly.title',       descKey: 'dashboard.progress.weekly.desc',       size: 'lg', icon: LineChartIcon },
   'progress-exercises':  { titleKey: 'dashboard.progress.exercises.title',    descKey: 'dashboard.progress.exercises.desc',    size: 'lg', icon: BarChart3 },
   'progress-percentages':{ titleKey: 'dashboard.progress.percentages.title',  descKey: 'dashboard.progress.percentages.desc',  size: 'lg', icon: PieChartIcon },
@@ -50,6 +54,7 @@ const CATALOG: Record<string, WidgetMeta> = {
 
 const DEFAULT_WIDGETS = [
   'stat-sessions', 'stat-streak', 'stat-exercises', 'stat-consistency',
+  'progress-cardio',
   'progress-weekly', 'progress-percentages',
   'progress-exercises', 'progress-warnings',
   'recent-sessions',
@@ -124,6 +129,13 @@ function WidgetContent({ id, overview, insights, t }: Readonly<WidgetContentProp
     return <WorkoutPercentages data={insights.workoutPercentages} />;
   }
 
+  if (id === 'progress-cardio') {
+    if (!insights) {
+      return <p className="text-sm text-muted-foreground py-6 text-center">{t('dashboard.progress.empty')}</p>;
+    }
+    return <CardioBalance data={insights.cardio} />;
+  }
+
   if (id === 'progress-warnings') {
     if (!insights) {
       return <p className="text-sm text-muted-foreground py-6 text-center">{t('dashboard.progress.empty')}</p>;
@@ -172,6 +184,7 @@ export function DashboardPage() {
   const { data, isLoading } = useOverview();
   const insightsQuery = useProgressInsights(8);
   const logRestDay = useLogRestDay();
+  const [runOpen, setRunOpen] = useState(false);
   const { t } = useLanguage();
   const {
     widgets,
@@ -219,16 +232,27 @@ export function DashboardPage() {
 
         <div className="flex items-center gap-2 flex-wrap">
           {!editMode && (
-            <button
-              type="button"
-              onClick={handleRestDay}
-              disabled={logRestDay.isPending}
-              className="flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg bg-card border border-border text-muted-foreground text-sm font-medium hover:text-foreground hover:border-[#06b6d4]/60 hover:bg-[#06b6d4]/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              title={t('dashboard.restDay.tooltip')}
-            >
-              <Moon className="w-3.5 h-3.5" />
-              {t('dashboard.restDay.button')}
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setRunOpen(true)}
+                className="flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg bg-card border border-border text-muted-foreground text-sm font-medium hover:text-foreground hover:border-primary/60 hover:bg-primary/10 transition-colors"
+                title={t('sessions.run.tooltip')}
+              >
+                <Footprints className="w-3.5 h-3.5" />
+                {t('sessions.run.button')}
+              </button>
+              <button
+                type="button"
+                onClick={handleRestDay}
+                disabled={logRestDay.isPending}
+                className="flex items-center gap-1.5 px-3 min-h-[40px] rounded-lg bg-card border border-border text-muted-foreground text-sm font-medium hover:text-foreground hover:border-[#06b6d4]/60 hover:bg-[#06b6d4]/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title={t('dashboard.restDay.tooltip')}
+              >
+                <Moon className="w-3.5 h-3.5" />
+                {t('dashboard.restDay.button')}
+              </button>
+            </>
           )}
           {editMode && availableToAdd.length > 0 && (
             <button
@@ -427,6 +451,8 @@ export function DashboardPage() {
           </div>
         </dialog>
       )}
+
+      <LogRunDialog open={runOpen} onClose={() => setRunOpen(false)} />
     </div>
   );
 }

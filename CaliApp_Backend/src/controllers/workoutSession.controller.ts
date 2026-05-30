@@ -3,6 +3,7 @@ import { workoutSessionService } from "../services/workoutSession.service";
 import { sendSuccess, sendCreated, sendNoContent } from "../utils/apiResponse";
 import { getRouteParam } from "../utils/params";
 import type { LogRestDayDTO } from "../dtos/workout-session/log-rest-day.dto";
+import type { LogCardioDTO } from "../dtos/workout-session/log-cardio.dto";
 import type { StartSessionDTO } from "../dtos/workout-session/start-session.dto";
 import type { AddSessionRowDTO } from "../dtos/workout-session/add-session-row.dto";
 import type { SessionStatus } from "../models/workoutSession.model";
@@ -47,6 +48,13 @@ export const workoutSessionController = {
   logRestDay: async (req: Request, res: Response, next: NextFunction) => {
     try {
       const session = await workoutSessionService.logRestDay(req.user!.id, req.body as LogRestDayDTO);
+      sendCreated(res, session);
+    } catch (err) { next(err); }
+  },
+
+  logCardio: async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const session = await workoutSessionService.logCardio(req.user!.id, req.body as LogCardioDTO);
       sendCreated(res, session);
     } catch (err) { next(err); }
   },

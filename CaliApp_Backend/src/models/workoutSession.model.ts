@@ -1,1 +1,1 @@
-export type SessionStatus = "started" | "completed" | "cancelled" | "rest";
+export type SessionStatus = "started" | "completed" | "cancelled" | "rest" | "cardio";

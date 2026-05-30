@@ -6,6 +6,7 @@ import { AppError } from "../utils/apiError";
 import { parsePagination, getPrismaSkip, buildPaginationMeta } from "../utils/pagination";
 import type { PaginatedResponseDTO } from "../dtos/common/pagination.dto";
 import type { LogRestDayDTO } from "../dtos/workout-session/log-rest-day.dto";
+import type { LogCardioDTO } from "../dtos/workout-session/log-cardio.dto";
 import type { StartSessionDTO } from "../dtos/workout-session/start-session.dto";
 import type { AddSessionRowDTO } from "../dtos/workout-session/add-session-row.dto";
 import type { WorkoutSessionResponseDTO } from "../dtos/workout-session/workout-session-response.dto";
@@ -154,6 +155,30 @@ export const workoutSessionService = {
       startedAt,
       completedAt: startedAt,
       status: "rest" satisfies SessionStatus,
+      notes: notes ?? null,
+    });
+
+    return toWorkoutSessionResponse(session);
+  },
+
+  // Log a running/cardio activity. Like a rest day this is a row-less session,
+  // but with status "cardio" plus the manually entered distance (km) and an
+  // optional duration (minutes). Cardio counts as a real activity — unlike rest
+  // days — so it feeds the strength-vs-cardio balance on the dashboard.
+  logCardio: async (
+    userId: string,
+    { distanceKm, durationMinutes, date, notes }: LogCardioDTO,
+  ): Promise<WorkoutSessionResponseDTO> => {
+    const startedAt = date ? new Date(date) : new Date();
+
+    const session = await workoutSessionRepository.create({
+      userId,
+      workoutTableId: null,
+      startedAt,
+      completedAt: startedAt,
+      status: "cardio" satisfies SessionStatus,
+      distanceKm,
+      durationMinutes: durationMinutes ?? null,
       notes: notes ?? null,
     });
 

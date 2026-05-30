@@ -94,6 +94,10 @@ model WorkoutSession {
   startedAt      DateTime  @map("started_at")
   completedAt    DateTime? @map("completed_at")
   status         String    @default("started") @db.VarChar(20)
+  // Cardio/running activities (status = "cardio") store their manually entered
+  // distance and optional duration here. Null for strength sessions and rest days.
+  distanceKm       Float?  @map("distance_km")
+  durationMinutes  Int?    @map("duration_minutes")
   notes          String?
   createdAt      DateTime  @default(now()) @map("created_at")
 

@@ -14,6 +14,13 @@ export const logRestDaySchema = z.object({
   notes: z.string().max(500).optional(),
 });
 
+export const logCardioSchema = z.object({
+  distanceKm: z.number().positive().max(1000),
+  durationMinutes: z.number().positive().max(1440).optional(),
+  date: z.iso.datetime().optional(),
+  notes: z.string().max(500).optional(),
+});
+
 export const addSessionRowSchema = z.object({
   exerciseId: z.uuid(),
   plannedSets: z.number().int().min(1).max(50),

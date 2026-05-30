@@ -1,7 +1,7 @@
 import type { Exercise, MeasurementType } from './exercise.types';
 import type { PerformedSet } from './performedSet.types';
 
-export type WorkoutSessionStatus = 'started' | 'completed' | 'cancelled' | 'rest';
+export type WorkoutSessionStatus = 'started' | 'completed' | 'cancelled' | 'rest' | 'cardio';
 
 export interface WorkoutSession {
   id: string;
@@ -11,6 +11,8 @@ export interface WorkoutSession {
   status: WorkoutSessionStatus;
   startedAt: string;
   completedAt: string | null;
+  distanceKm?: number | null;
+  durationMinutes?: number | null;
   notes: string | null;
   createdAt: string;
   rows?: WorkoutSessionRow[];
@@ -45,6 +47,13 @@ export interface UpdateSessionRequest {
 }
 
 export interface LogRestDayRequest {
+  date?: string;
+  notes?: string;
+}
+
+export interface LogCardioRequest {
+  distanceKm: number;
+  durationMinutes?: number;
   date?: string;
   notes?: string;
 }

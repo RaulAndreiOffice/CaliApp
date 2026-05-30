@@ -5,6 +5,7 @@ import type {
   StartSessionRequest,
   UpdateSessionRequest,
   LogRestDayRequest,
+  LogCardioRequest,
   AddSessionRowRequest,
 } from '../types/workoutSession.types';
 
@@ -57,6 +58,14 @@ export const workoutSessionApi = {
   async logRestDay(data: LogRestDayRequest = {}): Promise<WorkoutSession> {
     const res = await api.post<ApiResponse<WorkoutSession>>(
       '/workout-sessions/rest-day',
+      data
+    );
+    return res.data.data;
+  },
+
+  async logCardio(data: LogCardioRequest): Promise<WorkoutSession> {
+    const res = await api.post<ApiResponse<WorkoutSession>>(
+      '/workout-sessions/cardio',
       data
     );
     return res.data.data;
