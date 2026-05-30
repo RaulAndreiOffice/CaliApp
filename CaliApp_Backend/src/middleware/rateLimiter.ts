@@ -29,3 +29,17 @@ export const refreshRateLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
+
+// Global ceiling for the whole API. A normal SPA screen fires only a handful of
+// requests (React Query caches and dedupes), so 300/min/IP never trips for real
+// use — but it caps abusive floods so a single misbehaving client can't pin the
+// database with the heavier stats/dashboard queries and degrade everyone else.
+// Kept generous on purpose: users behind shared NAT/CGNAT must not throttle each
+// other. (Relies on `trust proxy` being set so the real client IP is used.)
+export const generalApiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  message: tooManyRequestsBody,
+  standardHeaders: true,
+  legacyHeaders: false,
+});

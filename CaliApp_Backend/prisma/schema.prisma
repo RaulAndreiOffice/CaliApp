@@ -107,6 +107,9 @@ model WorkoutSession {
 
   @@index([userId])
   @@index([userId, startedAt])
+  // Covers the dominant stats/dashboard access pattern: filter a user's sessions
+  // by status (completed / cardio / rest) over a startedAt window in one index seek.
+  @@index([userId, status, startedAt])
   @@map("workout_sessions")
 }
 
