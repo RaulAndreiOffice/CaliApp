@@ -2,6 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { queryClient } from './lib/queryClient';
+import { AuthBootstrap } from './components/auth/AuthBootstrap/AuthBootstrap';
 import { ProtectedRoute } from './components/auth/ProtectedRoute/ProtectedRoute';
 import { AppLayout } from './components/layout/AppLayout/AppLayout';
 import { AuthLayout } from './components/layout/AuthLayout/AuthLayout';
@@ -64,7 +65,9 @@ function AppRoutes() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppRoutes />
+      <AuthBootstrap>
+        <AppRoutes />
+      </AuthBootstrap>
       <Toaster position="top-right" />
     </QueryClientProvider>
   );

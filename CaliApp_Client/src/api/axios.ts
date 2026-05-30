@@ -35,7 +35,7 @@ function shouldRefreshToken(token: string | null): boolean {
   return expiresAt - Date.now() < 60_000;
 }
 
-async function refreshTokens(): Promise<AuthTokens> {
+export async function refreshTokens(): Promise<AuthTokens> {
   if (refreshPromise) return refreshPromise;
 
   const { updateTokens, logout } = useAuthStore.getState();

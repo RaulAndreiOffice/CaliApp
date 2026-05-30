@@ -40,6 +40,14 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: STORAGE_KEYS.AUTH,
+      // Security: never persist the access token to localStorage (it would be
+      // readable by any XSS). Only the non-sensitive session flag + profile
+      // survive a reload; the token is re-minted in memory via a silent refresh
+      // from the httpOnly refresh cookie (see AuthBootstrap).
+      partialize: (state) => ({
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
     }
   )
 );

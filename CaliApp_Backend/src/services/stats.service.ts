@@ -488,17 +488,23 @@ export const statsService = {
       _min: { startedAt: true },
     });
     const firstCompletedAt = historyStats._min.startedAt ?? null;
+    // Hard ceiling on both paths (incl. "all") so a long-lived account can't
+    // make this endpoint load its entire history with deep includes in one go.
+    const MAX_WEEKS = 260; // ~5 years
     const safeWeeks = weeks === "all"
-      ? Math.max(
-          1,
-          firstCompletedAt
-            ? Math.floor(
-                (currentWeek.getTime() - startOfWeek(firstCompletedAt).getTime()) /
-                  (7 * 24 * 60 * 60 * 1000)
-              ) + 1
-            : 1
+      ? Math.min(
+          MAX_WEEKS,
+          Math.max(
+            1,
+            firstCompletedAt
+              ? Math.floor(
+                  (currentWeek.getTime() - startOfWeek(firstCompletedAt).getTime()) /
+                    (7 * 24 * 60 * 60 * 1000)
+                ) + 1
+              : 1
+          )
         )
-      : Math.min(260, Math.max(1, weeks));
+      : Math.min(MAX_WEEKS, Math.max(1, weeks));
     const firstWeek = addDays(currentWeek, -(safeWeeks - 1) * 7);
     const end = addDays(currentWeek, 7);
 
